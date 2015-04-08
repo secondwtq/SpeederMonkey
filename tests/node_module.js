@@ -7,6 +7,7 @@ module = function (name) {
 };
 
 module.exports = { };
+module.globalPaths = [ ];
 
 var _module_init = function () {
 
@@ -25,18 +26,30 @@ var _module_init = function () {
 		};
 
 		init_mod('os', _node_native_os);
-		init_mod('path', _node_native_path);
 		init_mod('fs', _node_native_fs);
 	};
 
-	module.prototype.require = function (name, new_context) {
+	var init_internal = function () {
+		var init_int = function (name) {
+			module._load_js_module(name + '.js', name);
+		}
+
+		init_int('util');
+		init_int('path');
+	}
+
+	var init_path = function () {
+		var paths = [ ];
+	};
+
+	module._load_js_module = function (path, name, new_context) {
 
 		if (_cache[name])
 			return _cache[name].exports;
 
 		if (new_context === undefined) { new_context = true; }
 
-		var source = readfile(name+'.js');
+		var source = readfile(path);
 		var mod = new module(name);
 		_cache[name] = mod;
 
@@ -46,19 +59,28 @@ var _module_init = function () {
 
 			context.exports = mod.exports;
 			context.require = mod.require;
+			context.process = process;
 			context.__filename = "";
 
 			_native_module.eval_in_sandbox(source, context, name);
 		} else {
 			source = wrap(source);
-			_native_module.eval(source, name)(mod.exports, _require);
+			_native_module.eval(source, name)(mod.exports, module.prototype.require);
 		}
 
 		return mod.exports;
 	};
 
+	module.resolver_general = function (name, new_context) {
+		return module._load_js_module(name + '.js', name, new_context); };
+
+	module.prototype.require = function (name, new_context) {
+		return module.resolver_general(name, new_context);
+	};
+
 	require = module.prototype.require;
 	init_native();
+	init_internal();
 };
 
 _module_init();

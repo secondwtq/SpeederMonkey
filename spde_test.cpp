@@ -5,11 +5,11 @@
 
 #include <jsapi.h>
 
-#include "spde/spde.hpp"
+#include "xoundation/spde.hpp"
 
-#include "spde_test_common.h"
-#include "node_native_fs.h"
-#include "node_module.h"
+#include "xoundation/spde/spde_test_common.h"
+#include "xoundation/native/node_native_fs.h"
+#include "xoundation/native/node_module.h"
 
 class vx_test {
     public:
@@ -96,7 +96,6 @@ int main(int argc, const char *argv[]) {
         xoundation::node_native::register_interface_process(context, global, argc, argv);
 
         xoundation::node_native::register_interface_os(context, global);
-        xoundation::node_native::register_interface_path(context, global);
         xoundation::node_native::register_interface_fs(context, global);
 
         std::string source_pre = readfile("node_module.js");

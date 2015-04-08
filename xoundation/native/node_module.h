@@ -7,18 +7,40 @@
 #define MOZJS_NODE_MODULE_H
 
 #include <jsapi.h>
-#include "spde/spde.hpp"
-#include "spde_test_common.h"
+#include <xoundation/spde.hpp>
+#include <xoundation/spde/spde_test_common.h>
 
 namespace xoundation {
 
 namespace native {
 
+static bool sandbox_resolve(JSContext *cx, JS::HandleObject obj, JS::HandleId id,
+                            JS::MutableHandleObject objp) {
+    bool resolved;
+    if (!JS_ResolveStandardClass(cx, obj, id, &resolved))
+        return false;
+    if (resolved) {
+        objp.set(obj);
+        return true;
+    }
+    objp.set(nullptr);
+    return true;
+}
+
+static JSClass sandbox_class = {
+    "sandbox", JSCLASS_GLOBAL_FLAGS | JSCLASS_NEW_RESOLVE,
+    JS_PropertyStub, JS_DeletePropertyStub,
+    JS_PropertyStub, JS_StrictPropertyStub,
+    JS_EnumerateStub, (JSResolveOp) sandbox_resolve, JS_ConvertStub,
+    nullptr, nullptr, nullptr, nullptr,
+    JS_GlobalObjectTraceHook
+};
+
 bool create_global_env(JSContext *c, unsigned int argc, JS::Value *vp) {
     JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
 
-    JS::RootedObject global(c);
-    global = JS_NewGlobalObject(c, &global_class, nullptr, JS::DontFireOnNewGlobalHook);
+    JS::RootedObject global(c, JS_NewGlobalObject(c, &sandbox_class, nullptr,
+                                                 JS::DontFireOnNewGlobalHook));
     if (!global) return false;
     {
         JSAutoCompartment cp(c, global);
@@ -50,8 +72,13 @@ bool eval_in_sandbox(JSContext *c, unsigned int argc, JS::Value *vp) {
     std::string name = spd::caster<const std::string&>::back(c, args[2].address());
     JS::RootedObject new_global(c, args[1].toObjectOrNull());
     JS::RootedValue ret(c);
+    bool ok;
 
-    bool ok = JS_EvaluateScript(c, new_global, source.c_str(), source.length(), name.c_str(), 0, &ret);
+    {
+        JSAutoCompartment ac(c, new_global);
+        ok = JS_EvaluateScript(c, new_global, source.c_str(), source.length(), name.c_str(),
+                               0, &ret);
+    }
 
     args.rval().set(ret);
     return ok;

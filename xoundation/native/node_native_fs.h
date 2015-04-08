@@ -13,9 +13,12 @@
 #include <sys/uio.h>
 #include <stdlib.h>
 
+#include <limits.h>
+#include <sys/syslimits.h>
+
 #include <jsapi.h>
-#include "spde/spde.hpp"
-#include "spde_test_common.h"
+#include <xoundation/spde.hpp>
+#include <xoundation/spde/spde_test_common.h>
 
 namespace xoundation {
 
@@ -154,11 +157,8 @@ void register_interface_os(JSContext *context, JS::Handle<JSObject *> parent) {
                       JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_READONLY);
 }
 
-void register_interface_path(JSContext *context, JS::Handle<JSObject *> parent) {
-    JS::RootedObject node_path(context, JS_DefineObject(context, parent, "_node_native_path",
-                                                        nullptr, nullptr, JSPROP_ENUMERATE | JSPROP_READONLY | JSPROP_PERMANENT));
-}
-
+// used in TypeScript
+// node.js/lib/path
 std::string process_cwd() {
     const size_t buffer_size = 256;
     char *buf = reinterpret_cast<char *>(malloc(sizeof(char) * (1 + buffer_size)));
@@ -170,8 +170,11 @@ std::string process_cwd() {
     return ret;
 }
 
+// used in TypeScript
 void process_exit(int status) {
     exit(status); }
+
+#include <mach-o/dyld.h>
 
 void register_interface_process_args(JSContext *context, JS::HandleObject process, int argc,
                                      const char *argv[]) {
@@ -183,6 +186,24 @@ void register_interface_process_args(JSContext *context, JS::HandleObject proces
 
     JS_DefineProperty(context, process, "argv", argv_array, JSPROP_ENUMERATE | JSPROP_PERMANENT |
                                                             JSPROP_READONLY);
+
+    constexpr size_t len_execpath = 2 * PATH_MAX;
+    char execpath[len_execpath] = { '\0' };
+    char abspath[len_execpath] = { '\0' };
+
+    // TODO: this only works for Darwin!
+    uint32_t darwin_exepath_len = len_execpath;
+    if (_NSGetExecutablePath(execpath, &darwin_exepath_len) == 0 &&
+        realpath(execpath, abspath) == abspath && strlen(abspath) > 0) {
+        memcpy(execpath, abspath, strlen(abspath) + 1);
+    } else {
+        strcpy(execpath, argv[0]);
+    }
+
+    JS::RootedString exec_path_handle(context, JS_NewStringCopyZ(context, execpath));
+    JS_DefineProperty(context, process, "execPath", exec_path_handle,
+                      JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_READONLY);
+
 }
 
 void register_interface_process(JSContext *context, JS::HandleObject parent, int argc, const char

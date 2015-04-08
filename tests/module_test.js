@@ -1,4 +1,6 @@
+var glb = require('test_new_global_env');
 
+print(process.execPath);
 print('Let\'s say we have global a = 10.');
 a = 10;
 var mt = require('mt');
@@ -8,6 +10,7 @@ print()
 
 print('module mt: ', mt);
 mt.export_func_1();
+mt.export_func_2();
 print();
 
 print('my platform is mt.export_func_3() -> ', mt.export_func_3());
