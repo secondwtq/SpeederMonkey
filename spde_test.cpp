@@ -93,7 +93,8 @@ int main(int argc, const char *argv[]) {
 
         xoundation::native::register_interface_modules(context, global);
 
-        xoundation::node_native::register_interface_process(context, global);
+        xoundation::node_native::register_interface_process(context, global, argc, argv);
+
         xoundation::node_native::register_interface_os(context, global);
         xoundation::node_native::register_interface_path(context, global);
         xoundation::node_native::register_interface_fs(context, global);

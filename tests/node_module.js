@@ -1,10 +1,12 @@
 
-// node.js module.js node_contextify.cc
+// node.js, module.js, node_contextify.cc
 
 module = function (name) {
 	this.name = name;
 	this.exports = { };
 };
+
+module.exports = { };
 
 var _module_init = function () {
 
@@ -12,7 +14,7 @@ var _module_init = function () {
 	var exports = { };
 
 	var wrap = function (source) {
-		return '(function (exports, require) { ' + source.toString() + '\n});'; };
+		return '(function (exports, require, __filename) { ' + source.toString() + '\n});'; };
 
 	var init_native = function () {
 		var init_mod = function (name, exp) {
@@ -44,6 +46,8 @@ var _module_init = function () {
 
 			context.exports = mod.exports;
 			context.require = mod.require;
+			context.__filename = "";
+
 			_native_module.eval_in_sandbox(source, context, name);
 		} else {
 			source = wrap(source);

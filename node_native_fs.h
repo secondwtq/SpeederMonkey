@@ -10,6 +10,8 @@
 #include <cstdio>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/uio.h>
+#include <stdlib.h>
 
 #include <jsapi.h>
 #include "spde/spde.hpp"
@@ -105,6 +107,10 @@ stats fs_lstat_sync(const std::string& path) {
 
 // readdir_sync
 // fstat_sync
+// write_sync
+//      currently we only support simple fd and data args
+int fs_write_sync(int fd, const std::string& data) {
+    return write(fd, data.c_str(), data.length()); }
 
 void register_interface_fs(JSContext *context, JS::Handle<JSObject *> parent) {
 
@@ -130,7 +136,8 @@ void register_interface_fs(JSContext *context, JS::Handle<JSObject *> parent) {
                             (fs_stat_sync), fs_stat_sync>::callback, 1, attrs_func_default);
     JS_DefineFunction(context, node_fs, "lstatSync", spd::function_callback_wrapper<decltype
                             (fs_lstat_sync), fs_lstat_sync>::callback, 1, attrs_func_default);
-
+    JS_DefineFunction(context, node_fs, "writeSync", spd::function_callback_wrapper<decltype
+                            (fs_write_sync), fs_write_sync>::callback, 2, attrs_func_default);
 }
 
 void register_interface_os(JSContext *context, JS::Handle<JSObject *> parent) {
@@ -140,6 +147,11 @@ void register_interface_os(JSContext *context, JS::Handle<JSObject *> parent) {
 
     JS_DefineFunction(context, node_os, "platform", spd::function_callback_wrapper<decltype
                                         (os_platform), os_platform>::callback, 0, attrs_func_default);
+
+    // Windows: \r\n, UNIX: \n, Classic MacOS: \r
+    JS::RootedString eol_str(context, JS_NewStringCopyZ(context, "\n"));
+    JS_DefineProperty(context, node_os, "EOL", eol_str,
+                      JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_READONLY);
 }
 
 void register_interface_path(JSContext *context, JS::Handle<JSObject *> parent) {
@@ -158,12 +170,32 @@ std::string process_cwd() {
     return ret;
 }
 
-void register_interface_process(JSContext *context, JS::Handle<JSObject *> parent) {
+void process_exit(int status) {
+    exit(status); }
+
+void register_interface_process_args(JSContext *context, JS::HandleObject process, int argc,
+                                     const char *argv[]) {
+    JS::AutoValueVector at_vec(context);
+    for (size_t i = 0; i < argc; i++)
+        at_vec.append(spd::caster<const std::string&>::tojs(context, { argv[i] }));
+
+    JS::RootedObject argv_array(context, JS_NewArrayObject(context, at_vec));
+
+    JS_DefineProperty(context, process, "argv", argv_array, JSPROP_ENUMERATE | JSPROP_PERMANENT |
+                                                            JSPROP_READONLY);
+}
+
+void register_interface_process(JSContext *context, JS::HandleObject parent, int argc, const char
+                                * argv[]) {
     JS::RootedObject node_process(context, JS_DefineObject(context, parent, "process", nullptr, nullptr,
                                                            JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_READONLY));
 
     JS_DefineFunction(context, node_process, "cwd", spd::function_callback_wrapper<decltype
                                         (process_cwd), process_cwd>::callback, 0, attrs_func_default);
+    JS_DefineFunction(context, node_process, "exit", spd::function_callback_wrapper<decltype
+                                        (process_exit), process_exit>::callback, 1, attrs_func_default);
+
+    register_interface_process_args(context, node_process, argc, argv);
 }
 
 }
