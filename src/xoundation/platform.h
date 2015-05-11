@@ -23,6 +23,7 @@
 #define CUBE_PLATFORM_DARWIN
 #define CUBE_PLATFORM_POSIX
 #define CUBE_PLATFORM_MACH
+#define CUBE_PLATFORM_BSD_LIKE
 
 #elif defined(_WIN32)
 

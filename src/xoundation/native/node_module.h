@@ -14,24 +14,11 @@ namespace xoundation {
 
 namespace native {
 
-static bool sandbox_resolve(JSContext *cx, JS::HandleObject obj, JS::HandleId id,
-                            JS::MutableHandleObject objp) {
-    bool resolved;
-    if (!JS_ResolveStandardClass(cx, obj, id, &resolved))
-        return false;
-    if (resolved) {
-        objp.set(obj);
-        return true;
-    }
-    objp.set(nullptr);
-    return true;
-}
-
 static JSClass sandbox_class = {
-    "sandbox", JSCLASS_GLOBAL_FLAGS | JSCLASS_NEW_RESOLVE,
+    "sandbox", JSCLASS_GLOBAL_FLAGS,
     JS_PropertyStub, JS_DeletePropertyStub,
     JS_PropertyStub, JS_StrictPropertyStub,
-    JS_EnumerateStub, (JSResolveOp) sandbox_resolve, JS_ConvertStub,
+    JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub,
     nullptr, nullptr, nullptr, nullptr,
     JS_GlobalObjectTraceHook
 };
@@ -46,6 +33,7 @@ bool create_global_env(JSContext *c, unsigned int argc, JS::Value *vp) {
         JSAutoCompartment cp(c, global);
         if (!JS_InitStandardClasses(c, global)) return false;
     }
+    JS_FireOnNewGlobalObject(c, global);
 
     args.rval().setObject(*global);
     return true;
@@ -59,7 +47,8 @@ bool eval(JSContext *c, unsigned int argc, JS::Value *vp) {
 
     JS::RootedObject current_global(c, JS::CurrentGlobalOrNull(c));
     JS::RootedValue ret(c);
-    bool ok = JS_EvaluateScript(c, current_global, source.c_str(), source.length(), name.c_str(), 0, &ret);
+    bool ok = JS_EvaluateScript(c, current_global, source.c_str(), static_cast<unsigned int>(source
+                                    .length()), name.c_str(), 0, &ret);
 
     args.rval().set(ret);
     return ok;
@@ -75,9 +64,9 @@ bool eval_in_sandbox(JSContext *c, unsigned int argc, JS::Value *vp) {
     bool ok;
 
     {
-        JSAutoCompartment ac(c, new_global);
-        ok = JS_EvaluateScript(c, new_global, source.c_str(), source.length(), name.c_str(),
-                               0, &ret);
+        // JSAutoCompartment ac(c, new_global); (void) ac;
+        ok = JS_EvaluateScript(c, new_global, source.c_str(), static_cast<unsigned int>(source
+                                        .length()), name.c_str(), 0, &ret);
     }
 
     args.rval().set(ret);

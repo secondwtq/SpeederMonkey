@@ -28,7 +28,7 @@ JS::CallArgs& args, indices<N ...>) {
 template<typename ... T>
 std::tuple<typename caster<T>::backT ...> construct_args(JSContext *context, const JS::CallArgs&
 args) {
-    constexpr size_t count = sizeof ... (T);
+    constexpr int count = sizeof ... (T);
     return construct_args<T ...>(context, args, typename indices_builder<count>::type());
 }
 

@@ -6,15 +6,25 @@
 #ifndef MOZJS_NODE_NATIVE_FS_H
 #define MOZJS_NODE_NATIVE_FS_H
 
+#include <xoundation/platform.h>
+
 #include <string>
 #include <cstdio>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/uio.h>
 #include <stdlib.h>
+#include <dirent.h>
 
 #include <limits.h>
+
+// PATH_MAX
+#ifdef CUBE_PLATFORM_BSD_LIKE
 #include <sys/syslimits.h>
+#elif defined(CUBE_PLATFORM_LINUX)
+// stackoverflow.com/questions/9449241/where-is-path-max-defined-in-linux
+#include <linux/limits.h>
+#endif
 
 #include <jsapi.h>
 #include <xoundation/spde.hpp>
@@ -65,11 +75,11 @@ std::string fs_read_file_sync(const std::string& filename) {
         /* error */ }
 
     fseek(fp, 0, SEEK_END);
-    size_t fsize = ftell(fp);
+    long fsize = ftell(fp);
     rewind(fp);
 
     char *ret = new char[fsize + 1];
-    fread(ret, fsize, 1, fp);
+    fread(ret, static_cast<size_t>(fsize), 1, fp);
     ret[fsize] = '\0';
     std::string str_ret(ret);
     delete ret;
@@ -112,8 +122,69 @@ stats fs_lstat_sync(const std::string& path) {
 // fstat_sync
 // write_sync
 //      currently we only support simple fd and data args
-int fs_write_sync(int fd, const std::string& data) {
+long fs_write_sync(int fd, const std::string& data) {
     return write(fd, data.c_str(), data.length()); }
+
+// no 'cache' support currently
+//      used in node.js/lib/module::tryFile
+std::string fs_realpath_sync(const std::string& path) {
+
+    constexpr size_t len_execpath = 2 * PATH_MAX;
+    char abspath[len_execpath] = { '\0' };
+
+    realpath(path.c_str(), abspath);
+
+    std::string ret(abspath);
+    return ret;
+}
+
+// watch_file
+//  used in TypeScript, but not sure why
+// TODO: WIP since it needs a little more work.
+bool fs_watch_file(JSContext *c, unsigned int argc, JS::Value *vp) {
+    JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+
+    std::string filename = spd::caster<const std::string&>::back(c, args[0].address());
+    (void) filename;
+
+    return true;
+}
+
+// readdir_sync
+// TODO: we need a wrapper class for JSAPI Arrays to generalize this function.
+// P.S. : libuv@node.js uses scandir() with a filter function instead of opendir()
+bool fs_readdir_sync(JSContext *c, unsigned int argc, JS::Value *vp) {
+    JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+    std::string path = spd::caster<const std::string&>::back(c, args[0].address());
+
+    DIR *dir = opendir(path.c_str());
+    if (dir == 0) {
+        return false; }
+
+    struct dirent *entry;
+    JS::AutoValueVector files_vec(c);
+    while ((entry = readdir(dir)) != 0) {
+
+        switch (entry->d_name[0]) {
+            case '.':
+                switch (entry->d_name[1]) {
+                    case '\0': continue; // '.'
+                    case '.':
+                        switch (entry->d_name[2]) {
+                            case '\0': continue; // '..'
+                            default: break; // '\.\..*'
+                        }
+                    default: break;
+                }
+            default: break;
+        }
+
+        files_vec.append(spd::caster<const char *>::tojs(c, entry->d_name));
+    }
+    args.rval().setObject(*JS_NewArrayObject(c, files_vec));
+
+    return true;
+}
 
 void register_interface_fs(JSContext *context, JS::Handle<JSObject *> parent) {
 
@@ -141,6 +212,10 @@ void register_interface_fs(JSContext *context, JS::Handle<JSObject *> parent) {
                             (fs_lstat_sync), fs_lstat_sync>::callback, 1, attrs_func_default);
     JS_DefineFunction(context, node_fs, "writeSync", spd::function_callback_wrapper<decltype
                             (fs_write_sync), fs_write_sync>::callback, 2, attrs_func_default);
+    JS_DefineFunction(context, node_fs, "realpathSync", spd::function_callback_wrapper<decltype
+                            (fs_realpath_sync), fs_realpath_sync>::callback, 1, attrs_func_default);
+    JS_DefineFunction(context, node_fs, "watchFile", fs_watch_file, 2, attrs_func_default);
+    JS_DefineFunction(context, node_fs, "readdirSync", fs_readdir_sync, 1, attrs_func_default);
 }
 
 void register_interface_os(JSContext *context, JS::Handle<JSObject *> parent) {
@@ -166,7 +241,7 @@ std::string process_cwd() {
         /* error */ }
     std::string ret { buf };
     free(buf); // TODO: we need a helper class for such buffer
-    buf = nullptr;
+    buf = nullptr; (void) buf;
     return ret;
 }
 
@@ -174,7 +249,9 @@ std::string process_cwd() {
 void process_exit(int status) {
     exit(status); }
 
-#include <mach-o/dyld.h>
+#ifdef CUBE_PLATFORM_MACH
+#include <mach-o/dyld.h> // _NSGetExecutablePath
+#endif
 
 void register_interface_process_args(JSContext *context, JS::HandleObject process, int argc,
                                      const char *argv[]) {
@@ -191,7 +268,8 @@ void register_interface_process_args(JSContext *context, JS::HandleObject proces
     char execpath[len_execpath] = { '\0' };
     char abspath[len_execpath] = { '\0' };
 
-    // TODO: this only works for Darwin!
+    // TODO: platform specific part for Windows!
+    #ifdef CUBE_PLATFORM_MACH
     uint32_t darwin_exepath_len = len_execpath;
     if (_NSGetExecutablePath(execpath, &darwin_exepath_len) == 0 &&
         realpath(execpath, abspath) == abspath && strlen(abspath) > 0) {
@@ -199,6 +277,11 @@ void register_interface_process_args(JSContext *context, JS::HandleObject proces
     } else {
         strcpy(execpath, argv[0]);
     }
+    #else
+    size_t n = readlink("/proc/self/exe", execpath, len_execpath-1);
+    if (n == -1) printf("Failed to get executalbe path\n"); // should be a LOG
+    execpath[n] = '\0';
+    #endif
 
     JS::RootedString exec_path_handle(context, JS_NewStringCopyZ(context, execpath));
     JS_DefineProperty(context, process, "execPath", exec_path_handle,

@@ -1,4 +1,4 @@
-var exp = { };
+print('entering mt2');
 
 exports.mt2_t = function () {
 	print('this is mt2'); }
@@ -13,3 +13,5 @@ exports.t_export = function (func) {
 };
 
 exports.export_func_4 = exports.t_export(function () { });
+
+print('exiting mt2');

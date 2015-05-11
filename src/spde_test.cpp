@@ -70,7 +70,7 @@ int main(int argc, const char *argv[]) {
 
         JSAutoCompartment at_comp(context, global);
         if (!JS_InitStandardClasses(context, global)) return 1;
-        if (!JS_DefineFunctions(context, global, js_global_funcs)) return 1;
+        JS_DefineFunction(context, global, "print", print, 5, attrs_func_default);
 
         spd::class_info<vx_test>::inst_wrapper::set(new spd::class_info<vx_test>(context));
         spd::class_helper<vx_test>::ctor_wrapper<int>::define("vx_test", global);
@@ -92,23 +92,16 @@ int main(int argc, const char *argv[]) {
                                     (readfile), readfile>::callback, 1, attrs_func_default);
 
         xoundation::native::register_interface_modules(context, global);
-
         xoundation::node_native::register_interface_process(context, global, argc, argv);
-
         xoundation::node_native::register_interface_os(context, global);
         xoundation::node_native::register_interface_fs(context, global);
 
-        std::string source_pre = readfile("node_module.js");
+        printf("loading ...\n");
+        std::string source_pre = readfile("./lib/node_module.js");
         JS::RootedValue ret_pre(context);
-        JS_EvaluateScript(context, global, source_pre.c_str(), source_pre.length(),
-                          "node_module", 0,
-                          &ret_pre);
+        JS_EvaluateScript(context, global, source_pre.c_str(), static_cast<unsigned  int>(source_pre
+                                                        .length()), "node_module", 0, &ret_pre);
 
-        std::string source = readfile(argv[1]);
-        JS::RootedValue ret(context);
-        bool ok = JS_EvaluateScript(context, global, source.c_str(), source.length(), argv[1], 0, &ret);
-        if (!ok) return 1;
-        printf("Return from %s: %s\n", argv[1], JS_EncodeString(context, JS::ToString(context, ret)));
     }
 
     JS_DestroyContext(context);

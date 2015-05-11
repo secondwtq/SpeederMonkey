@@ -31,24 +31,25 @@ inline bool print(JSContext *context, unsigned int argc, JS::Value *vp) {
     return true;
 }
 
-static JSFunctionSpec js_global_funcs[] = {
-        JS_FS("print", print, 0, 0),
-};
+//static JSFunctionSpec js_global_funcs[] = {
+//        JS_FS("print", print, 0, 0),
+//        JS_FS_END // 150511 EVE: do not forget it or you'll get a NullPointerException
+//};
 
 inline void report_exception(JSContext *context, const char *msg, JSErrorReport *rep) {
-    fprintf(stderr, "%s:%u:%s\n", rep->filename ? rep->filename : "[anonymous]",
-            (unsigned int) rep->lineno, msg); }
+    (void) context; // a placeholder to suppress compiler warning
+    fprintf(stderr, "%s:%u:%s\n", rep->filename ? rep->filename : "[anonymous]", rep->lineno, msg); }
 
 inline std::string readfile(const std::string& filename) {
     printf("::readfile - Reading %s ...\n", filename.c_str());
     FILE *fp = fopen(filename.c_str(), "r");
 
     fseek(fp, 0, SEEK_END);
-    size_t fsize = ftell(fp);
+    long fsize = ftell(fp);
     rewind(fp);
 
     char *ret = new char[fsize+1];
-    fread(ret, fsize, 1, fp);
+    fread(ret, static_cast<size_t>(fsize), 1, fp);
     ret[fsize] = '\0';
     std::string str_ret(ret);
     delete ret;

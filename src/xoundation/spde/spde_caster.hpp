@@ -89,7 +89,21 @@ struct caster<int> {
     using jsT = JS::Value;
 
     inline static jsT tojs(JSContext *c, actualT src) {
-        return UINT_TO_JSVAL(src); }
+        return INT_TO_JSVAL(src); }
+
+    inline static backT back(JSContext *, JS::Value *src) {
+        return src->toInt32(); }
+
+};
+
+template<>
+struct caster<long> {
+    using actualT = long;
+    using backT = long;
+    using jsT = JS::Value;
+
+    inline static jsT tojs(JSContext *c, actualT src) {
+        return INT_TO_JSVAL(src); }
 
     inline static backT back(JSContext *, JS::Value *src) {
         return src->toInt32(); }
@@ -107,6 +121,18 @@ struct caster<bool> {
 
     inline static backT back(JSContext *c, JS::Value *src) {
         return src->toBoolean(); }
+};
+
+template <>
+struct caster<const char *> {
+
+    using actualT = const char *;
+    using backT = const char *;
+    using jsT = JS::Value;
+
+    inline static jsT tojs(JSContext *c, actualT src) {
+        return STRING_TO_JSVAL(JS_NewStringCopyZ(c, src)); }
+
 };
 
 template <>

@@ -67,12 +67,15 @@ class class_helper {
             return true;
         }
 
+    // never used since we have custom ctor now
+    /*
         inline static bool ctor_default(JSContext *context, unsigned int argc, JS::Value *vp) {
             JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
             T *raw = new T();
             args.rval().set(caster<T *>::tojs(context, raw));
             return true; // do not forget this!
         }
+    */
 
     public:
 
@@ -106,20 +109,21 @@ class class_helper {
 
             inline static void define(const std::string& name, JS::HandleObject global) {
                 info_t *info = info_t::instance();
-                info->jsc_def = reinterpret_cast<JSClass *>(malloc(sizeof(JSClass)));
-                info->jsc_def->name = name.c_str();
-                info->jsc_def->addProperty = JS_PropertyStub;
-                info->jsc_def->delProperty = JS_DeletePropertyStub;
-                info->jsc_def->getProperty = JS_PropertyStub;
-                info->jsc_def->setProperty = JS_StrictPropertyStub;
-                info->jsc_def->enumerate = JS_EnumerateStub;
-                info->jsc_def->resolve = JS_ResolveStub;
-                info->jsc_def->convert = JS_ConvertStub;
-                info->jsc_def->flags = JSCLASS_HAS_PRIVATE;
+
+                JSClass *jsclass_def = reinterpret_cast<JSClass *>(malloc(sizeof(JSClass)));
+                info->jsc_def = jsclass_def;
+                memset(jsclass_def, 0, sizeof(JSClass)); // you *must* init it or it would
+                                                            // lead to undefined behaviour
+                memcpy(jsclass_def, &details::default_class_def, sizeof(JSClass));
+
+                // TODO: dunno how the memory for the name string should be dealed with
+                info->jsc_def->name = (char *)malloc((name.length() + 1) * sizeof(char));
+                memcpy((char *) info->jsc_def->name, name.c_str(), name.length() * sizeof(char));
+                ((char *) info->jsc_def->name)[name.length()] = '\0';
 
                 info->jsc_proto = JS_InitClass(info->context, global, JS::NullPtr(), info->jsc_def,
                                                callback, 0, details::default_properties,
-                                               details::default_funcs, nullptr, details::default_static_funcs);
+                                               details::default_funcs, nullptr, nullptr);
             }
 
         };
@@ -143,8 +147,8 @@ class class_helper {
         static void register_as(const std::string& name) {
             info_t *info = info_t::instance();
             JS::RootedObject proto(info->context, info->jsc_proto);
-            JS_DefineFunction(info->context, proto, name.c_str(), callback, sizeof ... (Args),
-                              JSPROP_PERMANENT | JSPROP_ENUMERATE | JSFUN_STUB_GSOPS);
+            JS_DefineFunction(info->context, proto, name.c_str(), callback, static_cast<unsigned
+                 int>(sizeof ... (Args)), JSPROP_PERMANENT | JSPROP_ENUMERATE | JSFUN_STUB_GSOPS);
         }
 
     };

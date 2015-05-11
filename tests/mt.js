@@ -1,7 +1,8 @@
 print('enteing mt');
-var mt2 = require('mt2');
 var os = require('os');
+var mt2 = require('mt2');
 
+print('ttt');
 exports.export_func_1 = function () {
 	print('I exported this function export_func_1.'); };
 
@@ -17,6 +18,6 @@ exports.t_export = function (func) {
 	}
 };
 
-exports.export_func_4 = exports.t_export(function () { });
-
 a = 15;
+
+print('exiting mt');

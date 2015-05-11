@@ -11,6 +11,15 @@ static JSPropertySpec default_properties[] = { JS_PS_END };
 static JSFunctionSpec default_funcs[] = { JS_FS_END };
 static JSFunctionSpec default_static_funcs[] = { JS_FS_END };
 
+static JSClass default_class_def = {
+    "$speeder_default_class",
+    JSCLASS_HAS_PRIVATE,
+    JS_PropertyStub, JS_DeletePropertyStub,
+    JS_PropertyStub, JS_StrictPropertyStub,
+    JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub,
+    nullptr, nullptr, nullptr, nullptr, nullptr,
+};
+
 }
 
 template <typename T>
