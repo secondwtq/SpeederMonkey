@@ -272,14 +272,12 @@ void register_interface_process_args(JSContext *context, JS::HandleObject proces
     #ifdef CUBE_PLATFORM_MACH
     uint32_t darwin_exepath_len = len_execpath;
     if (_NSGetExecutablePath(execpath, &darwin_exepath_len) == 0 &&
-        realpath(execpath, abspath) == abspath && strlen(abspath) > 0) {
+            realpath(execpath, abspath) == abspath && strlen(abspath) > 0) {
         memcpy(execpath, abspath, strlen(abspath) + 1);
-    } else {
-        strcpy(execpath, argv[0]);
-    }
+    } else strcpy(execpath, argv[0]);
     #else
     size_t n = readlink("/proc/self/exe", execpath, len_execpath-1);
-    if (n == -1) printf("Failed to get executalbe path\n"); // should be a LOG
+    if (n == -1) printf("Failed to get executable path\n"); // should be a LOG
     execpath[n] = '\0';
     #endif
 

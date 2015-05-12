@@ -25,15 +25,23 @@ static JSClass sandbox_class = {
 
 bool create_global_env(JSContext *c, unsigned int argc, JS::Value *vp) {
     JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+    JS::CompartmentOptions options;
+    options.setVersion(JSVERSION_LATEST);
 
     JS::RootedObject global(c, JS_NewGlobalObject(c, &sandbox_class, nullptr,
-                                                 JS::DontFireOnNewGlobalHook));
+                                                 JS::DontFireOnNewGlobalHook, options));
     if (!global) return false;
     {
         JSAutoCompartment cp(c, global);
         if (!JS_InitStandardClasses(c, global)) return false;
     }
     JS_FireOnNewGlobalObject(c, global);
+
+    JS::MutableHandleObject h(&global);
+    if (!JS_WrapObject(c, h)) {
+        printf("wrapping failed!\n");
+        return false;
+    }
 
     args.rval().setObject(*global);
     return true;
@@ -64,7 +72,7 @@ bool eval_in_sandbox(JSContext *c, unsigned int argc, JS::Value *vp) {
     bool ok;
 
     {
-        // JSAutoCompartment ac(c, new_global); (void) ac;
+        JSAutoCompartment ac(c, new_global); (void) ac; // needed for contexts work properly!
         ok = JS_EvaluateScript(c, new_global, source.c_str(), static_cast<unsigned int>(source
                                         .length()), name.c_str(), 0, &ret);
     }

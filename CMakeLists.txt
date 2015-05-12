@@ -5,7 +5,8 @@ option(BUILDEBUG "enable -g" OFF)
 option(USE_STATIC "link with static mozjs binary (libjs_static.a)" OFF)
 
 include_directories(SYSTEM ./src)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -g")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pagezero_size 10000 -image_base 100000000")
 
 if(BUILDEBUG)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")

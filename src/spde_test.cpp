@@ -57,6 +57,8 @@ int main(int argc, const char *argv[]) {
     JSRuntime *js_rt = JS_NewRuntime(32L * 1024L * 1024L,
     JSUseHelperThreads::JS_USE_HELPER_THREADS);
 
+    JS_SetNativeStackQuota(js_rt, 128 * sizeof(size_t) * 1024); // WTF ...
+
     JSContext *context = JS_NewContext(js_rt, 8192);
     if (!context) return 1;
     JS_SetErrorReporter(context, report_exception);

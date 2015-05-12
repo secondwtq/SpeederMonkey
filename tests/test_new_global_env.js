@@ -16,4 +16,4 @@ var test = function() {
     return a.apply(); };
 };
 
-exp.p = test();
+exports.p = test();
