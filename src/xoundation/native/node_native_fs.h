@@ -60,6 +60,7 @@ class stats {
     struct stat m_stat;
 };
 
+// used in CoffeeScript cake
 bool fs_exists_sync(const std::string& path) {
     if (access(path.c_str(), F_OK) != -1)
         return true;
@@ -69,6 +70,7 @@ bool fs_exists_sync(const std::string& path) {
 std::string os_platform() {
     return "darwin"; }
 
+// used in CoffeeScript cake
 std::string fs_read_file_sync(const std::string& filename) {
     FILE *fp = fopen(filename.c_str(), "r");
     if (fp == nullptr) {
@@ -118,15 +120,28 @@ stats fs_lstat_sync(const std::string& path) {
     return stats(&stat_buf);
 }
 
-// readdir_sync
 // fstat_sync
+// stat
+// watch
+// exists
+// mkdir
+// write_file
 // write_sync
+// open_sync
+// read_sync
+// close
+// process.stdout
+// child_process
+// vm.runInThisContext, vm.runInContext
+// repl
+// process.env
 //      currently we only support simple fd and data args
 long fs_write_sync(int fd, const std::string& data) {
     return write(fd, data.c_str(), data.length()); }
 
 // no 'cache' support currently
 //      used in node.js/lib/module::tryFile
+//      CoffeeScript cake
 std::string fs_realpath_sync(const std::string& path) {
 
     constexpr size_t len_execpath = 2 * PATH_MAX;
@@ -186,6 +201,12 @@ bool fs_readdir_sync(JSContext *c, unsigned int argc, JS::Value *vp) {
     return true;
 }
 
+void fs_unlink_sync(const std::string& path) {
+    if (unlink(path.c_str())) {
+        // TODO: error handling of unlink_sync
+    }
+}
+
 void register_interface_fs(JSContext *context, JS::Handle<JSObject *> parent) {
 
     JS::RootedObject node_fs(context, JS_DefineObject(context, parent, "_node_native_fs", nullptr, nullptr,
@@ -214,8 +235,10 @@ void register_interface_fs(JSContext *context, JS::Handle<JSObject *> parent) {
                             (fs_write_sync), fs_write_sync>::callback, 2, attrs_func_default);
     JS_DefineFunction(context, node_fs, "realpathSync", spd::function_callback_wrapper<decltype
                             (fs_realpath_sync), fs_realpath_sync>::callback, 1, attrs_func_default);
-    JS_DefineFunction(context, node_fs, "watchFile", fs_watch_file, 2, attrs_func_default);
     JS_DefineFunction(context, node_fs, "readdirSync", fs_readdir_sync, 1, attrs_func_default);
+    JS_DefineFunction(context, node_fs, "unlinkSync", spd::function_callback_wrapper<decltype
+                            (fs_unlink_sync), fs_unlink_sync>::callback, 1, attrs_func_default);
+    JS_DefineFunction(context, node_fs, "watchFile", fs_watch_file, 2, attrs_func_default);
 }
 
 void register_interface_os(JSContext *context, JS::Handle<JSObject *> parent) {
@@ -234,6 +257,7 @@ void register_interface_os(JSContext *context, JS::Handle<JSObject *> parent) {
 
 // used in TypeScript
 // node.js/lib/path
+// CoffeeScript cake
 std::string process_cwd() {
     const size_t buffer_size = 256;
     char *buf = reinterpret_cast<char *>(malloc(sizeof(char) * (1 + buffer_size)));
@@ -245,7 +269,16 @@ std::string process_cwd() {
     return ret;
 }
 
+// used in CoffeeScript cake
+// TODO: exception not implemented.
+void process_chdir(const std::string& path) {
+    if (chdir(path.c_str())) {
+        printf("process::chdir failed!\n");
+    }
+}
+
 // used in TypeScript
+// used in CoffeeScript cake
 void process_exit(int status) {
     exit(status); }
 
@@ -274,6 +307,7 @@ void register_interface_process_args(JSContext *context, JS::HandleObject proces
     if (_NSGetExecutablePath(execpath, &darwin_exepath_len) == 0 &&
             realpath(execpath, abspath) == abspath && strlen(abspath) > 0) {
         memcpy(execpath, abspath, strlen(abspath) + 1);
+        memcpy(execpath, abspath, strlen(abspath) + 1);
     } else strcpy(execpath, argv[0]);
     #else
     size_t n = readlink("/proc/self/exe", execpath, len_execpath-1);
@@ -292,8 +326,8 @@ void register_interface_process(JSContext *context, JS::HandleObject parent, int
     JS::RootedObject node_process(context, JS_DefineObject(context, parent, "process", nullptr, nullptr,
                                                            JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_READONLY));
 
-    JS_DefineFunction(context, node_process, "cwd", spd::function_callback_wrapper<decltype
-                                        (process_cwd), process_cwd>::callback, 0, attrs_func_default);
+    JS_DefineFunction(context, node_process, "cwd", spd::function_callback_wrapper<std::string (),
+                      process_cwd>::callback, 0, attrs_func_default);
     JS_DefineFunction(context, node_process, "exit", spd::function_callback_wrapper<decltype
                                         (process_exit), process_exit>::callback, 1, attrs_func_default);
 

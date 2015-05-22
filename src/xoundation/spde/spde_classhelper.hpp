@@ -107,7 +107,8 @@ class class_helper {
                 return true;
             }
 
-            inline static void define(const std::string& name, JS::HandleObject global) {
+            inline static void define(const std::string& name, JS::HandleObject global,
+                                      JS::HandleObject parent_proto = JS::NullPtr()) {
                 info_t *info = info_t::instance();
 
                 JSClass *jsclass_def = reinterpret_cast<JSClass *>(malloc(sizeof(JSClass)));
@@ -121,9 +122,16 @@ class class_helper {
                 memcpy((char *) info->jsc_def->name, name.c_str(), name.length() * sizeof(char));
                 ((char *) info->jsc_def->name)[name.length()] = '\0';
 
-                info->jsc_proto = JS_InitClass(info->context, global, JS::NullPtr(), info->jsc_def,
+                info->jsc_proto = JS_InitClass(info->context, global, parent_proto, info->jsc_def,
                                                callback, 0, details::default_properties,
                                                details::default_funcs, nullptr, nullptr);
+            }
+
+            template <typename ParentT>
+            inline static void define(const std::string& name, JS::HandleObject global) {
+                JS::RootedObject parent_proto(info_t::instance()->context,
+                                              class_info<ParentT>::instance()->jsc_proto);
+                define(name, global, parent_proto);
             }
 
         };

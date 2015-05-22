@@ -51,11 +51,46 @@ int test_funbind_objptr(int a, vx_test *obj) {
     printf("VXX: test_funbind_objptr: %d %d\n", a, obj->test);
     return 23333; }
 
+class parent {
+    public:
+
+        int a = 0;
+
+        std::string func_nonv() {
+            return "I'm the parent and I'm not a virtual function.";
+        }
+
+        std::string func_parent() {
+            return "I'm the parent."; }
+
+        virtual std::string func() {
+            return "I'm the parent, I'm virtual."; }
+};
+
+class child : public parent {
+    public:
+
+        int b = 1;
+
+        std::string func_nonv() {
+            return "I'm the child and I'm not a virtual function.";
+        }
+
+        std::string func_child() {
+            return "I'm the child."; }
+
+        virtual std::string func() {
+            return "I'm the child, I'm virtual."; }
+};
+
 int main(int argc, const char *argv[]) {
 
     if (!JS_Init()) return 1;
     JSRuntime *js_rt = JS_NewRuntime(32L * 1024L * 1024L,
     JSUseHelperThreads::JS_USE_HELPER_THREADS);
+
+    JS::RuntimeOptionsRef(js_rt).setBaseline(true)
+                            .setIon(true).setAsmJS(true);
 
     JS_SetNativeStackQuota(js_rt, 128 * sizeof(size_t) * 1024); // WTF ...
 
@@ -83,6 +118,24 @@ int main(int argc, const char *argv[]) {
         spd::class_helper<vx_test>::method_callback_wrapper<decltype(&vx_test::test_func_objptr),
                 &vx_test::test_func_objptr>::register_as("test_func_objptr");
 
+        spd::class_info<parent>::inst_wrapper::set(new spd::class_info<parent>(context));
+        spd::class_helper<parent>::ctor_wrapper<>::define("parent", global);
+        spd::class_helper<parent>::property<int, &parent::a>("a");
+        spd::class_helper<parent>::method_callback_wrapper<decltype(&parent::func),
+                &parent::func>::register_as("func");
+        spd::class_helper<parent>::method_callback_wrapper<decltype(&parent::func_nonv),
+                &parent::func_nonv>::register_as("func_nonv");
+        spd::class_helper<parent>::method_callback_wrapper<decltype(&parent::func_parent),
+                &parent::func_parent>::register_as("func_parent");
+
+        spd::class_info<child>::inst_wrapper::set(new spd::class_info<child>(context));
+        spd::class_helper<child>::ctor_wrapper<>::define<parent>("child", global);
+        spd::class_helper<child>::property<int, &child::b>("b");
+        spd::class_helper<child>::method_callback_wrapper<decltype(&child::func),
+                &child::func>::register_as("func");
+        spd::class_helper<child>::method_callback_wrapper<decltype(&child::func_child),
+                &child::func_child>::register_as("func_child");
+
         JS_DefineFunction(context, global, "test_funbind_objptr",
                           spd::function_callback_wrapper<int (int, vx_test *), test_funbind_objptr>::callback,
                                                                               2, attrs_func_default);
@@ -101,6 +154,7 @@ int main(int argc, const char *argv[]) {
         printf("loading ...\n");
         std::string source_pre = readfile("./lib/node_module.js");
         JS::RootedValue ret_pre(context);
+//        enableTracing(context);
         JS_EvaluateScript(context, global, source_pre.c_str(), static_cast<unsigned  int>(source_pre
                                                         .length()), "node_module", 0, &ret_pre);
 
