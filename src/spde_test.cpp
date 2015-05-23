@@ -64,7 +64,9 @@ class parent {
             return "I'm the parent."; }
 
         virtual std::string func() {
-            return "I'm the parent, I'm virtual."; }
+            std::string ret = "I'm the parent, I'm virtual.";
+            ret += std::to_string(this->a);
+            return ret; }
 };
 
 class child : public parent {
@@ -80,7 +82,9 @@ class child : public parent {
             return "I'm the child."; }
 
         virtual std::string func() {
-            return "I'm the child, I'm virtual."; }
+            std::string ret = "I'm the child, I'm virtual.";
+            ret += std::to_string(this->a);
+            return ret; }
 };
 
 int main(int argc, const char *argv[]) {
