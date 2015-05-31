@@ -10,7 +10,7 @@
 #include <string>
 #include <cstdio>
 
-static JSClass global_class = {
+static JSClass global_class_x = {
         "global", JSCLASS_GLOBAL_FLAGS,
         JS_PropertyStub, JS_DeletePropertyStub,
         JS_PropertyStub, JS_StrictPropertyStub,

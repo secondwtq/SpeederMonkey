@@ -159,7 +159,7 @@ std::string fs_realpath_sync(const std::string& path) {
 bool fs_watch_file(JSContext *c, unsigned int argc, JS::Value *vp) {
     JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
 
-    std::string filename = spd::caster<const std::string&>::back(c, args[0].address());
+    std::string filename = spd::caster<const std::string&>::back(c, args[0]);
     (void) filename;
 
     return true;
@@ -170,7 +170,7 @@ bool fs_watch_file(JSContext *c, unsigned int argc, JS::Value *vp) {
 // P.S. : libuv@node.js uses scandir() with a filter function instead of opendir()
 bool fs_readdir_sync(JSContext *c, unsigned int argc, JS::Value *vp) {
     JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
-    std::string path = spd::caster<const std::string&>::back(c, args[0].address());
+    std::string path = spd::caster<const std::string&>::back(c, args[0]);
 
     DIR *dir = opendir(path.c_str());
     if (dir == 0) {

@@ -6,9 +6,6 @@
 #ifndef HEADER_SPEEDER_MONKEY_MAIN
 #define HEADER_SPEEDER_MONKEY_MAIN
 
-#include "spde/spde_helpers.hpp"
-#include "spde/spde_helpers.hpp"
-
 #include "spde/spde_classinfo.hpp"
 #include "spde/spde_caster.hpp"
 #include "spde/spde_functionbind.hpp"

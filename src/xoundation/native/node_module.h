@@ -50,8 +50,8 @@ bool create_global_env(JSContext *c, unsigned int argc, JS::Value *vp) {
 bool eval(JSContext *c, unsigned int argc, JS::Value *vp) {
     JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
 
-    std::string source = spd::caster<const std::string&>::back(c, args[0].address());
-    std::string name = spd::caster<const std::string&>::back(c, args[1].address());
+    std::string source = spd::caster<const std::string&>::back(c, args[0]);
+    std::string name = spd::caster<const std::string&>::back(c, args[1]);
 
     JS::RootedObject current_global(c, JS::CurrentGlobalOrNull(c));
     JS::RootedValue ret(c);
@@ -65,8 +65,8 @@ bool eval(JSContext *c, unsigned int argc, JS::Value *vp) {
 bool eval_in_sandbox(JSContext *c, unsigned int argc, JS::Value *vp) {
     JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
 
-    std::string source = spd::caster<const std::string&>::back(c, args[0].address());
-    std::string name = spd::caster<const std::string&>::back(c, args[2].address());
+    std::string source = spd::caster<const std::string&>::back(c, args[0]);
+    std::string name = spd::caster<const std::string&>::back(c, args[2]);
     JS::RootedObject new_global(c, args[1].toObjectOrNull());
     JS::RootedValue ret(c);
     bool ok;

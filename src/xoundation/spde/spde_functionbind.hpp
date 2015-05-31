@@ -14,6 +14,7 @@
 #include "spde_heroes.hpp"
 #include "spde_caster.hpp"
 
+namespace xoundation {
 namespace spd {
 
 namespace details {
@@ -21,8 +22,7 @@ namespace details {
 template<typename ... T, size_t ... N>
 inline std::tuple<typename caster<T>::backT ...> construct_args(JSContext *context, const
 JS::CallArgs& args, indices<N ...>) {
-    return std::forward_as_tuple<typename caster<T>::backT ...>(caster<T>::back(context, args[N]
-            .address()) ...);
+    return std::forward_as_tuple<typename caster<T>::backT ...>(caster<T>::back(context, args[N]) ...);
 }
 
 template<typename ... T>
@@ -41,7 +41,8 @@ struct callback_wrapper<ReturnT(Args ...), func> {
     inline static bool callback(JSContext *context, const JS::CallArgs& call_args,
                                 std::tuple<typename caster<Args>::backT ...> args, indices<N ...>) {
         call_args.rval().set(caster<ReturnT>::tojs(context, func(std::get<N>(args) ...)));
-        return true; }
+        return true;
+    }
 };
 
 template<typename ... Args, void (& func)(Args ...)>
@@ -57,22 +58,29 @@ struct callback_wrapper<void(Args ...), func> {
 
 }
 
-template <typename ProtoT, ProtoT& func>
+template<typename ProtoT, ProtoT& func>
 struct function_callback_wrapper;
 
-template <typename ReturnT, typename ... Args, ReturnT (&func) (Args ...)>
-struct function_callback_wrapper<ReturnT (Args ...), func> {
+template<typename ReturnT, typename ... Args, ReturnT (& func)(Args ...)>
+struct function_callback_wrapper<ReturnT(Args ...), func> {
 
-    template <typename U = ReturnT>
+    template<typename U = ReturnT>
     inline static bool callback(JSContext *context, unsigned int argc, JS::Value *vp) {
         JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
         auto args_tuple = details::construct_args<Args ...>(context, args);
-        return details::callback_wrapper<ReturnT (Args ...), func>::callback(
-                    context, args, args_tuple, typename indices_builder<sizeof ... (Args)>::type());
+        return details::callback_wrapper<ReturnT(Args ...), func>::callback(
+                context, args, args_tuple, typename indices_builder<sizeof ... (Args)>::type());
+    }
+
+    inline static void register_func(JSContext *context, JS::HandleObject global, const
+            std::string& name) {
+        JS_DefineFunction(context, global, name.c_str(), callback, static_cast<unsigned int>
+            (sizeof ... (Args)), JSPROP_ENUMERATE | JSPROP_PERMANENT | JSFUN_STUB_GSOPS);
     }
 
 };
 
+}
 }
 
 #endif

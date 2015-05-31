@@ -16,7 +16,12 @@ set(SOURCE_FILES
     src/xoundation/spde/spde_classinfo.hpp
     src/spde_test.cpp)
 
-add_executable(mozjs ${SOURCE_FILES} src/xoundation/spde/spde_classhelper.hpp src/xoundation/spde/spde_helpers.hpp src/xoundation/spde/spde_caster.hpp src/spde_test.cpp src/xoundation/spde/spde_test_common.h src/xoundation/spde/spde_heroes.hpp src/xoundation/spde/spde_functionbind.hpp src/xoundation/native/node_native_fs.h src/xoundation/spde.hpp src/xoundation/native/node_module.h src/xoundation/platform.h)
+add_executable(mozjs ${SOURCE_FILES} src/xoundation/spde/spde_classhelper.hpp
+src/xoundation/spde/spde_caster.hpp src/spde_test.cpp
+src/xoundation/spde/spde_test_common.h src/xoundation/spde/spde_heroes.hpp
+src/xoundation/spde/spde_functionbind.hpp src/xoundation/native/node_native_fs.h
+src/xoundation/spde.hpp src/xoundation/native/node_module.h src/xoundation/platform.h
+src/xoundation/spde_helper.hxx)
 
 if (USE_STATIC)
     target_link_libraries(mozjs js_static z)

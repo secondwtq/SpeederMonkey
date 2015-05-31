@@ -11,6 +11,12 @@
 #include "xoundation/native/node_native_fs.h"
 #include "xoundation/native/node_module.h"
 
+#include "xoundation/spde_helper.hxx"
+
+using namespace xoundation;
+
+SpdRuntime *srt = nullptr;
+
 class vx_test {
     public:
 
@@ -54,6 +60,11 @@ int test_funbind_objptr(int a, vx_test *obj) {
 class parent {
     public:
 
+        parent()
+//                data(new JS::RootedValue(srt->context())) { }
+            {
+                data = new JS::HandleValue(JS::UndefinedHandleValue);
+            }
         int a = 0;
 
         std::string func_nonv() {
@@ -67,6 +78,15 @@ class parent {
             std::string ret = "I'm the parent, I'm virtual.";
             ret += std::to_string(this->a);
             return ret; }
+
+        parent *itsthis() { return this; }
+
+    static int st;
+
+//    JS::RootedValue *data;
+     JS::HandleValue *data;
+
+    static int getst() { return st; }
 };
 
 class child : public parent {
@@ -87,85 +107,74 @@ class child : public parent {
             return ret; }
 };
 
+int parent::st = 2;
+
 int main(int argc, const char *argv[]) {
 
-    if (!JS_Init()) return 1;
-    JSRuntime *js_rt = JS_NewRuntime(32L * 1024L * 1024L,
-    JSUseHelperThreads::JS_USE_HELPER_THREADS);
-
-    JS::RuntimeOptionsRef(js_rt).setBaseline(true)
-                            .setIon(true).setAsmJS(true);
-
-    JS_SetNativeStackQuota(js_rt, 128 * sizeof(size_t) * 1024); // WTF ...
-
-    JSContext *context = JS_NewContext(js_rt, 8192);
-    if (!context) return 1;
-    JS_SetErrorReporter(context, report_exception);
+    srt = new SpdRuntime;
 
     {
-        JSAutoRequest at_req(context);
+        JSAutoRequest at_req(*srt);
 
-        JS::RootedObject global(context);
-        global = JS_NewGlobalObject(context, &global_class, nullptr, JS::DontFireOnNewGlobalHook);
+        JS::RootedObject global(*srt);
+        global = JS_NewGlobalObject(*srt, &xoundation::cls_global, nullptr, JS::DontFireOnNewGlobalHook);
         if (!global) return 1;
 
-        JSAutoCompartment at_comp(context, global);
-        if (!JS_InitStandardClasses(context, global)) return 1;
-        JS_DefineFunction(context, global, "print", print, 5, attrs_func_default);
+        JSAutoCompartment at_comp(*srt, global);
+        if (!JS_InitStandardClasses(*srt, global)) return 1;
+        JS_DefineFunction(*srt, global, "print", print, 5, attrs_func_default);
 
-        spd::class_info<vx_test>::inst_wrapper::set(new spd::class_info<vx_test>(context));
+        spd::class_info<vx_test>::inst_wrapper::set(new spd::class_info<vx_test>(*srt));
         spd::class_helper<vx_test>::ctor_wrapper<int>::define("vx_test", global);
-        spd::class_helper<vx_test>::property<vx_test *, &vx_test::objref>("objref");
-        spd::class_helper<vx_test>::property<int, &vx_test::test>("test");
+
+        spd::class_helper<vx_test>::reg_property<vx_test *, &vx_test::objref>("objref");
+        spd::class_helper<vx_test>::reg_property<int, &vx_test::test>("test");
         spd::class_helper<vx_test>::method_callback_wrapper<decltype(&vx_test::test_func),
                 &vx_test::test_func>::register_as("test_func");
         spd::class_helper<vx_test>::method_callback_wrapper<decltype(&vx_test::test_func_objptr),
                 &vx_test::test_func_objptr>::register_as("test_func_objptr");
 
-        spd::class_info<parent>::inst_wrapper::set(new spd::class_info<parent>(context));
-        spd::class_helper<parent>::ctor_wrapper<>::define("parent", global);
-        spd::class_helper<parent>::property<int, &parent::a>("a");
-        spd::class_helper<parent>::method_callback_wrapper<decltype(&parent::func),
-                &parent::func>::register_as("func");
-        spd::class_helper<parent>::method_callback_wrapper<decltype(&parent::func_nonv),
-                &parent::func_nonv>::register_as("func_nonv");
-        spd::class_helper<parent>::method_callback_wrapper<decltype(&parent::func_parent),
-                &parent::func_parent>::register_as("func_parent");
+        spd::class_info<parent>::inst_wrapper::set(new spd::class_info<parent>(*srt));
+        klass<parent>().define<>("parent", global)
+                    .property<int, &parent::a>("a")
+                    .property<JS::HandleValue *, &parent::data>("data")
+                    .method<decltype(&parent::func), &parent::func>("func")
+                    .method<decltype(&parent::func_nonv), &parent::func_nonv>("func_nonv")
+                    .method<decltype(&parent::func_parent), &parent::func_parent>("func_parent")
+                    .method<decltype(&parent::itsthis), &parent::itsthis>("itsthis")
+                    .static_prop<int, &parent::st>("st")
+                    .static_func<decltype(parent::getst), parent::getst>("getst");
 
-        spd::class_info<child>::inst_wrapper::set(new spd::class_info<child>(context));
-        spd::class_helper<child>::ctor_wrapper<>::define<parent>("child", global);
-        spd::class_helper<child>::property<int, &child::b>("b");
-        spd::class_helper<child>::method_callback_wrapper<decltype(&child::func),
-                &child::func>::register_as("func");
-        spd::class_helper<child>::method_callback_wrapper<decltype(&child::func_child),
-                &child::func_child>::register_as("func_child");
+        spd::class_info<child>::inst_wrapper::set(new spd::class_info<child>(*srt));
+        klass<child>().inherits<parent>("child", global)
+                    .method<decltype(&child::func), &child::func>("func")
+                    .method<decltype(&child::func_child), &child::func_child>("func_child")
+                    .property<int, &child::b>("b");
 
-        JS_DefineFunction(context, global, "test_funbind_objptr",
+        JS_DefineFunction(*srt, global, "test_funbind_objptr",
                           spd::function_callback_wrapper<int (int, vx_test *), test_funbind_objptr>::callback,
                                                                               2, attrs_func_default);
-        JS_DefineFunction(context, global, "test_funbind_void",
+        JS_DefineFunction(*srt, global, "test_funbind_void",
                           spd::function_callback_wrapper<void (), test_funbind_void>::callback, 0,
                                                                               attrs_func_default);
 
-        JS_DefineFunction(context, global, "readfile", spd::function_callback_wrapper<decltype
+        JS_DefineFunction(*srt, global, "readfile", spd::function_callback_wrapper<decltype
                                     (readfile), readfile>::callback, 1, attrs_func_default);
 
-        xoundation::native::register_interface_modules(context, global);
-        xoundation::node_native::register_interface_process(context, global, argc, argv);
-        xoundation::node_native::register_interface_os(context, global);
-        xoundation::node_native::register_interface_fs(context, global);
+        native::register_interface_modules(*srt, global);
+        node_native::register_interface_process(*srt, global, argc, argv);
+        node_native::register_interface_os(*srt, global);
+        node_native::register_interface_fs(*srt, global);
 
         printf("loading ...\n");
         std::string source_pre = readfile("./lib/node_module.js");
-        JS::RootedValue ret_pre(context);
-//        enableTracing(context);
-        JS_EvaluateScript(context, global, source_pre.c_str(), static_cast<unsigned  int>(source_pre
+        JS::RootedValue ret_pre(*srt);
+        JS_EvaluateScript(*srt, global, source_pre.c_str(), static_cast<unsigned  int>(source_pre
                                                         .length()), "node_module", 0, &ret_pre);
 
     }
 
-    JS_DestroyContext(context);
-    JS_DestroyRuntime(js_rt);
+    delete srt;
     JS_ShutDown();
     return 0;
 }
