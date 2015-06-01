@@ -49,7 +49,7 @@ struct property_accessor {
     template<PropT T::*AttrT>
     inline static bool default_getter(JSContext *context, unsigned int argc, JS::Value *vp) {
         JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
-        T *raw = reinterpret_cast<T *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)));
+        T *raw = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
         args.rval().set(caster<PropT>::tojs(context, raw->*AttrT));
         return true;
     }
@@ -57,7 +57,7 @@ struct property_accessor {
     template<PropT T::*AttrT>
     inline static bool default_setter(JSContext *context, unsigned int argc, JS::Value *vp) {
         JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
-        T *raw = reinterpret_cast<T *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)));
+        T *raw = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
         raw->*AttrT = caster<PropT>::back(context, args[0]);
 
         return true;
@@ -70,7 +70,7 @@ struct property_accessor<T, JS::HandleValue *> {
     template<JS::HandleValue *T::*AttrT>
     inline static bool default_getter(JSContext *context, unsigned int argc, JS::Value *vp) {
         JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
-        T *raw = reinterpret_cast<T *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)));
+        T *raw = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
         args.rval().set(*(raw->*AttrT));
         return true;
     }
@@ -78,7 +78,7 @@ struct property_accessor<T, JS::HandleValue *> {
     template<JS::HandleValue *T::*AttrT>
     inline static bool default_setter(JSContext *context, unsigned int argc, JS::Value *vp) {
         JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
-        T *raw = reinterpret_cast<T *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)));
+        T *raw = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
         JS::RootedValue r(context, args[0]);
         (raw->*AttrT)->repoint(r);
 
@@ -141,7 +141,7 @@ class class_helper {
     }
 
     inline static void dtor_callback(JSFreeOp *op, JSObject *obj) {
-        T *raw = reinterpret_cast<T *>(JS_GetPrivate(obj));
+        lifetime<T> *raw = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(obj));
         printf("calling finalizer on %lx ...\n", raw);
         delete raw;
     }
@@ -153,13 +153,22 @@ class class_helper {
         inline static T *callback_internal(std::tuple<Args ...> args, indices<N ...>) {
             return new T(std::get<N>(args) ...); }
 
+        // for placement new
+        template<size_t ... N>
+        inline static T *callback_internal(std::tuple<Args ...> args, indices<N ...>, void *ptr) {
+            return new (ptr) T(std::get<N>(args) ...); }
+
         inline static bool callback(JSContext *context, unsigned int argc, JS::Value *vp) {
             JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
             auto args_tuple = details::construct_args<typename caster<Args>::backT ...>(context,
                                                                                         args);
+            lifetime<T> *t = new lifetime_js<T>(LIFETIME_PLACEMENT_CONSTRUCT);
             T *raw = callback_internal(args_tuple, typename indices_builder
-                    <sizeof ... (Args)>::type());
-            args.rval().set(caster<T *>::tojs(context, raw));
+                    <sizeof ... (Args)>::type(), t->get());
+            JS::RootedObject proto(context, info_t::instance()->jsc_proto);
+            JSObject *jsobj = JS_NewObject(context, info_t::instance()->jsc_def, proto, JS::NullPtr());
+            JS_SetPrivate(jsobj, reinterpret_cast<void *>(t));
+            args.rval().set(OBJECT_TO_JSVAL(jsobj));
             return true;
         }
 
@@ -204,7 +213,7 @@ class class_helper {
             JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
             auto args_tuple = details::construct_args<typename caster<Args>::backT ...>(context,
                                                                                         args);
-            T *raw = reinterpret_cast<T *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)));
+            T *raw = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
             return details::method_callback_wrapper<ReturnT(T::*)(Args ...), func>::callback
                     (raw, context, args, args_tuple, typename indices_builder<sizeof ... (Args)
                     >::type());

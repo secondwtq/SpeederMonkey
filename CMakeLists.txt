@@ -21,7 +21,7 @@ src/xoundation/spde/spde_caster.hpp src/spde_test.cpp
 src/xoundation/spde/spde_test_common.h src/xoundation/spde/spde_heroes.hpp
 src/xoundation/spde/spde_functionbind.hpp src/xoundation/native/node_native_fs.h
 src/xoundation/spde.hpp src/xoundation/native/node_module.h src/xoundation/platform.h
-src/xoundation/spde_helper.hxx)
+src/xoundation/spde_helper.hxx src/xoundation/spde/spde_vivalavida.hxx)
 
 if (USE_STATIC)
     target_link_libraries(mozjs js_static z)

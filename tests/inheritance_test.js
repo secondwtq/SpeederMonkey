@@ -46,4 +46,3 @@ print(c.itsthis().data);
 c.data = function () { print('haha'); };
 c.data();
 print(c.itsthis().func_js());
-

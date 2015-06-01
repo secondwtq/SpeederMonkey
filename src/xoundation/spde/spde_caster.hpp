@@ -10,6 +10,7 @@
 
 #include "spde_heroes.hpp"
 #include "spde_classinfo.hpp"
+#include "spde_vivalavida.hxx"
 #include <string>
 
 #include <cassert>
@@ -19,20 +20,21 @@ namespace spd {
 
 template<typename T>
 struct caster {
-    using actualT = T;
+    using actualT = const T&;
     using backT = const T&;
     using jsT = JS::Value;
 
     inline static jsT tojs(JSContext *c, actualT src) {
         JS::RootedObject proto(c, class_info<T>::instance()->jsc_proto);
         JSObject *jsobj = JS_NewObject(c, class_info<T>::instance()->jsc_def, proto, JS::NullPtr());
-        printf("setting private T %lx ...\n", &src);
-        JS_SetPrivate(jsobj, reinterpret_cast<void *>(&src));
+        lifetime<T> *lt = new lifetime_js<T>(src);
+        JS_SetPrivate(jsobj, reinterpret_cast<void *>(lt));
         return OBJECT_TO_JSVAL(jsobj);
     }
 
     inline static backT back(JSContext *c, JS::HandleValue src) {
-        return *(reinterpret_cast<T *>(JS_GetPrivate(src.toObjectOrNull())));
+        lifetime<T> *t = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(src.toObjectOrNull()));
+        return *(t->get());
     }
 
 };
@@ -47,13 +49,14 @@ struct caster<T *> {
     inline static jsT tojs(JSContext *c, actualT src) {
         JS::RootedObject proto(c, class_info<T>::instance()->jsc_proto);
         JSObject *jsobj = JS_NewObject(c, class_info<T>::instance()->jsc_def, proto, JS::NullPtr());
-        printf("setting private T * %lx ...\n", src);
-        JS_SetPrivate(jsobj, reinterpret_cast<void *>(src));
+        lifetime<T> *lt = new lifetime_cxx<T>(src);
+        JS_SetPrivate(jsobj, reinterpret_cast<void *>(lt));
         return OBJECT_TO_JSVAL(jsobj);
     }
 
     inline static backT back(JSContext *c, JS::HandleValue src) {
-        return reinterpret_cast<T *>(JS_GetPrivate(src.toObjectOrNull()));
+        lifetime<T> *t = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(src.toObjectOrNull()));
+        return t->get();
     }
 
 };
@@ -68,13 +71,15 @@ struct caster<T&> {
     inline static jsT tojs(JSContext *c, actualT src) {
         JS::RootedObject proto(c, class_info<T>::instance()->jsc_proto);
         JSObject *jsobj = JS_NewObject(c, class_info<T>::instance()->jsc_def, proto, JS::NullPtr());
+        lifetime<T> *lt = new lifetime_cxx<T>(&src);
         printf("setting private T& %lx ...\n", &src);
-        JS_SetPrivate(jsobj, reinterpret_cast<void *>(&src));
+        JS_SetPrivate(jsobj, reinterpret_cast<void *>(lt));
         return OBJECT_TO_JSVAL(jsobj);
     }
 
     inline static backT back(JSContext *c, JS::HandleValue src) {
-        return *reinterpret_cast<T *>(JS_GetPrivate(src.toObjectOrNull()));
+        lifetime<T> *t = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(src.toObjectOrNull()));
+        return *(t->get());
     }
 };
 
