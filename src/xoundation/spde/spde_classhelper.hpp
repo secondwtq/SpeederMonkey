@@ -140,6 +140,12 @@ class class_helper {
                           (&(details::property_accessor<T, PropT>::template default_setter<AttrT>)));
     }
 
+    inline static void dtor_callback(JSFreeOp *op, JSObject *obj) {
+        T *raw = reinterpret_cast<T *>(JS_GetPrivate(obj));
+        printf("calling finalizer on %lx ...\n", raw);
+        delete raw;
+    }
+
     template<typename ... Args>
     struct ctor_wrapper {
 
@@ -166,6 +172,7 @@ class class_helper {
             memset(jsclass_def, 0, sizeof(JSClass)); // you *must* init it or it would
             // lead to undefined behaviour
             memcpy(jsclass_def, &details::default_class_def, sizeof(JSClass));
+            info->jsc_def->finalize = dtor_callback;
 
             // TODO: dunno how the memory for the name string should be dealed with
             info->jsc_def->name = (char *) malloc((name.length() + 1) * sizeof(char));

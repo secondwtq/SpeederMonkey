@@ -25,11 +25,12 @@ print(c.func_nonv());
 print(c.func_parent());
 print(c.func_child());
 
+print('\n------------\n');
+
 parent.prototype.func_js = function () {
     return 'I\'m a JS function , my value is ' + this.a + '.'; };
 
 c.a = 2;
-print();
 
 print(p.func());
 print(c.func());

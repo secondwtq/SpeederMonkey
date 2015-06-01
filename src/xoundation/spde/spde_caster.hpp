@@ -26,6 +26,7 @@ struct caster {
     inline static jsT tojs(JSContext *c, actualT src) {
         JS::RootedObject proto(c, class_info<T>::instance()->jsc_proto);
         JSObject *jsobj = JS_NewObject(c, class_info<T>::instance()->jsc_def, proto, JS::NullPtr());
+        printf("setting private T %lx ...\n", &src);
         JS_SetPrivate(jsobj, reinterpret_cast<void *>(&src));
         return OBJECT_TO_JSVAL(jsobj);
     }
@@ -46,6 +47,7 @@ struct caster<T *> {
     inline static jsT tojs(JSContext *c, actualT src) {
         JS::RootedObject proto(c, class_info<T>::instance()->jsc_proto);
         JSObject *jsobj = JS_NewObject(c, class_info<T>::instance()->jsc_def, proto, JS::NullPtr());
+        printf("setting private T * %lx ...\n", src);
         JS_SetPrivate(jsobj, reinterpret_cast<void *>(src));
         return OBJECT_TO_JSVAL(jsobj);
     }
@@ -66,6 +68,7 @@ struct caster<T&> {
     inline static jsT tojs(JSContext *c, actualT src) {
         JS::RootedObject proto(c, class_info<T>::instance()->jsc_proto);
         JSObject *jsobj = JS_NewObject(c, class_info<T>::instance()->jsc_def, proto, JS::NullPtr());
+        printf("setting private T& %lx ...\n", &src);
         JS_SetPrivate(jsobj, reinterpret_cast<void *>(&src));
         return OBJECT_TO_JSVAL(jsobj);
     }

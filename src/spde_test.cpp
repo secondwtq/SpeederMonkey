@@ -67,6 +67,8 @@ class parent {
             }
         int a = 0;
 
+        virtual ~parent() { printf("parent destructing ...\n"); }
+
         std::string func_nonv() {
             return "I'm the parent and I'm not a virtual function.";
         }
@@ -93,6 +95,8 @@ class child : public parent {
     public:
 
         int b = 1;
+
+        ~child() { printf("child destructing ...\n"); }
 
         std::string func_nonv() {
             return "I'm the child and I'm not a virtual function.";
@@ -124,15 +128,15 @@ int main(int argc, const char *argv[]) {
         if (!JS_InitStandardClasses(*srt, global)) return 1;
         JS_DefineFunction(*srt, global, "print", print, 5, attrs_func_default);
 
-        spd::class_info<vx_test>::inst_wrapper::set(new spd::class_info<vx_test>(*srt));
-        spd::class_helper<vx_test>::ctor_wrapper<int>::define("vx_test", global);
-
-        spd::class_helper<vx_test>::reg_property<vx_test *, &vx_test::objref>("objref");
-        spd::class_helper<vx_test>::reg_property<int, &vx_test::test>("test");
-        spd::class_helper<vx_test>::method_callback_wrapper<decltype(&vx_test::test_func),
-                &vx_test::test_func>::register_as("test_func");
-        spd::class_helper<vx_test>::method_callback_wrapper<decltype(&vx_test::test_func_objptr),
-                &vx_test::test_func_objptr>::register_as("test_func_objptr");
+//        spd::class_info<vx_test>::inst_wrapper::set(new spd::class_info<vx_test>(*srt));
+//        spd::class_helper<vx_test>::ctor_wrapper<int>::define("vx_test", global);
+//
+//        spd::class_helper<vx_test>::reg_property<vx_test *, &vx_test::objref>("objref");
+//        spd::class_helper<vx_test>::reg_property<int, &vx_test::test>("test");
+//        spd::class_helper<vx_test>::method_callback_wrapper<decltype(&vx_test::test_func),
+//                &vx_test::test_func>::register_as("test_func");
+//        spd::class_helper<vx_test>::method_callback_wrapper<decltype(&vx_test::test_func_objptr),
+//                &vx_test::test_func_objptr>::register_as("test_func_objptr");
 
         spd::class_info<parent>::inst_wrapper::set(new spd::class_info<parent>(*srt));
         klass<parent>().define<>("parent", global)

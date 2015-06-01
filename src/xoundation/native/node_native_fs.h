@@ -107,10 +107,10 @@ void fs_mkdir_sync(const std::string& path) {
     mkdir(path.c_str(), 0777); }
 
 // stat_sync
-stats fs_stat_sync(const std::string& path) {
+stats *fs_stat_sync(const std::string& path) {
     struct stat stat_buf;
     stat(path.c_str(), &stat_buf);
-    return stats(&stat_buf);
+    return new stats(&stat_buf);
 }
 
 // lstat_sync
