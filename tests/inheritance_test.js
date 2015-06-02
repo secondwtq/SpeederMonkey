@@ -17,6 +17,8 @@ print(p.data.b);
 a.b = 2;
 print(p.data.b);
 
+call_data(p);
+
 var c = new child();
 print("c.a ", c.a);
 print("c.b ", c.b);
@@ -43,6 +45,8 @@ print(c.itsthis().a);
 c.data = 3;
 print(c.data);
 print(c.itsthis().data);
-c.data = function () { print('haha'); };
+c.data = function () { print('haha ', this.a); };
 c.data();
 print(c.itsthis().func_js());
+
+print('\n------------\n');

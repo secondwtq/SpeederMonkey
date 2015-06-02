@@ -65,43 +65,25 @@ struct property_accessor {
 };
 
 template <typename T>
-struct property_accessor<T, JS::HandleValue *> {
+struct property_accessor <T, JS::PersistentRootedValue> {
 
-    template<JS::HandleValue *T::*AttrT>
+    template<JS::PersistentRootedValue T::*AttrT>
     inline static bool default_getter(JSContext *context, unsigned int argc, JS::Value *vp) {
         JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
         T *raw = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
-        args.rval().set(*(raw->*AttrT));
+        args.rval().set(raw->*AttrT);
         return true;
     }
 
-    template<JS::HandleValue *T::*AttrT>
+    template<JS::PersistentRootedValue T::*AttrT>
     inline static bool default_setter(JSContext *context, unsigned int argc, JS::Value *vp) {
         JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
         T *raw = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
-        JS::RootedValue r(context, args[0]);
-        (raw->*AttrT)->repoint(r);
-
+        raw->*AttrT = args[0];
         return true;
     }
-};
 
-//template <typename T, JS::MutableHandleValue *T::*AttrT>
-//struct property_accessor<T, JS::MutableHandleValue *, AttrT> {
-//    inline static bool default_getter(JSContext *context, unsigned int argc, JS::Value *vp) {
-//        JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
-//        T *raw = reinterpret_cast<T *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)));
-//        args.rval().set(*(raw->*AttrT));
-//        return true;
-//    }
-//
-//    inline static bool default_setter(JSContext *context, unsigned int argc, JS::Value *vp) {
-//        JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
-//        T *raw = reinterpret_cast<T *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)));
-//        (raw->*AttrT)->set(args[0]);
-//        return true;
-//    }
-//};
+};
 
 }
 

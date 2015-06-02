@@ -10,15 +10,6 @@
 #include <string>
 #include <cstdio>
 
-static JSClass global_class_x = {
-        "global", JSCLASS_GLOBAL_FLAGS,
-        JS_PropertyStub, JS_DeletePropertyStub,
-        JS_PropertyStub, JS_StrictPropertyStub,
-        JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub,
-        nullptr, nullptr, nullptr, nullptr,
-        JS_GlobalObjectTraceHook
-};
-
 inline bool print(JSContext *context, unsigned int argc, JS::Value *vp) {
 
     JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
@@ -35,10 +26,6 @@ inline bool print(JSContext *context, unsigned int argc, JS::Value *vp) {
 //        JS_FS("print", print, 0, 0),
 //        JS_FS_END // 150511 EVE: do not forget it or you'll get a NullPointerException
 //};
-
-inline void report_exception(JSContext *context, const char *msg, JSErrorReport *rep) {
-    (void) context; // a placeholder to suppress compiler warning
-    fprintf(stderr, "%s:%u:%s\n", rep->filename ? rep->filename : "[anonymous]", rep->lineno, msg); }
 
 inline std::string readfile(const std::string& filename) {
     printf("::readfile - Reading %s ...\n", filename.c_str());
@@ -59,5 +46,9 @@ inline std::string readfile(const std::string& filename) {
 }
 
 static unsigned attrs_func_default = JSPROP_ENUMERATE | JSPROP_PERMANENT | JSFUN_STUB_GSOPS;
+
+inline void spd_gc_callback(JSRuntime *rt, JSGCStatus status, void *data) {
+
+}
 
 #endif

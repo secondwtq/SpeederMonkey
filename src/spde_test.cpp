@@ -60,11 +60,8 @@ int test_funbind_objptr(int a, vx_test *obj) {
 class parent {
     public:
 
-        parent()
-//                data(new JS::RootedValue(srt->context())) { }
-            {
-                data = new JS::HandleValue(JS::UndefinedHandleValue);
-            }
+        parent() : data(srt->context()) { }
+
         int a = 0;
 
         virtual ~parent() { printf("parent destructing ...\n"); }
@@ -86,7 +83,8 @@ class parent {
     static int st;
 
 //    JS::RootedValue *data;
-     JS::HandleValue *data;
+//    JS::HandleValue *data;
+    JS::PersistentRootedValue data;
 
     static int getst() { return st; }
 };
@@ -110,6 +108,18 @@ class child : public parent {
             ret += std::to_string(this->a);
             return ret; }
 };
+
+void call_data(JS::HandleValue p) {
+    parent *raw = reinterpret_cast<spd::lifetime<parent> *>(JS_GetPrivate(p.toObjectOrNull()))
+            ->get();
+    JS::RootedValue ret_pre(*srt);
+    JS::RootedObject self(*srt, p.toObjectOrNull());
+    JS::RootedObject raw_data(*srt, raw->data.get().toObjectOrNull());
+    JS::RootedValue t(*srt);
+    JS_GetProperty(srt->context(), raw_data, "a", &t);
+    printf("Data a: %d\n", t.toInt32());
+    JS_CallFunctionValue(srt->context(), self, raw->data, JS::HandleValueArray::empty(), &ret_pre);
+}
 
 int parent::st = 2;
 
@@ -141,7 +151,7 @@ int main(int argc, const char *argv[]) {
         spd::class_info<parent>::inst_wrapper::set(new spd::class_info<parent>(*srt));
         klass<parent>().define<>("parent", global)
                     .property<int, &parent::a>("a")
-                    .property<JS::HandleValue *, &parent::data>("data")
+                    .property<JS::PersistentRootedValue, &parent::data>("data")
                     .method<decltype(&parent::func), &parent::func>("func")
                     .method<decltype(&parent::func_nonv), &parent::func_nonv>("func_nonv")
                     .method<decltype(&parent::func_parent), &parent::func_parent>("func_parent")
@@ -164,6 +174,9 @@ int main(int argc, const char *argv[]) {
 
         JS_DefineFunction(*srt, global, "readfile", spd::function_callback_wrapper<decltype
                                     (readfile), readfile>::callback, 1, attrs_func_default);
+
+        JS_DefineFunction(*srt, global, "call_data", spd::function_callback_wrapper<decltype
+            (call_data), call_data>::callback, 1, attrs_func_default);
 
         native::register_interface_modules(*srt, global);
         node_native::register_interface_process(*srt, global, argc, argv);
