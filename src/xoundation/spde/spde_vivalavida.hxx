@@ -14,9 +14,13 @@ namespace xoundation {
 namespace spd {
 
 enum lifetime_construct {
-    LIFETIME_PLACEMENT_CONSTRUCT
-};
+    LIFETIME_PLACEMENT_CONSTRUCT };
 
+// currently we support C++ Lifetime (through pointers / references)
+//  and JS Lifetime (with values)
+//  implementation just copied Userdata in LuaBridge
+//  we does not, and may be never support shared lifetime.
+//
 template<typename T>
 struct lifetime {
 

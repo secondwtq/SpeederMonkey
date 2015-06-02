@@ -87,8 +87,15 @@ template<typename T>
 struct caster<const T&> {
 
     using actualT = const T&;
-    using backT = T&;
+    using backT = const T&;
     using jsT = JS::Value;
+
+    // how should tojs() do?
+
+    inline static backT back(JSContext *c, JS::HandleValue src) {
+        lifetime<T> *t = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(src.toObjectOrNull()));
+        return *(t->get());
+    }
 
 };
 
@@ -122,68 +129,49 @@ struct caster<JS::HandleValue> {
 
 };
 
-//template<>
-//struct caster<JS::HandleValue> {
-//
-//    using actualT = JS::HandleValue;
-//    using backT = JS::HandleValue;
-//    using jsT = JS::Value;
-//
-//    inline static jsT tojs(JSContext *c, actualT src) {
-//        return
-//    }
-//
-//    inline static backT back(JSContext *c, JS::Value *src) {
-//        return { *src };
-//    }
-//
-//};
-
 template<>
 struct caster<int> {
+
     using actualT = int;
     using backT = int;
     using jsT = JS::Value;
 
     inline static jsT tojs(JSContext *c, actualT src) {
-        return INT_TO_JSVAL(src);
-    }
+        return INT_TO_JSVAL(src); }
 
     inline static backT back(JSContext *, JS::HandleValue src) {
-        return src.toInt32();
-    }
+        return src.toInt32(); }
 
 };
 
 template<>
 struct caster<long> {
+
     using actualT = long;
     using backT = long;
     using jsT = JS::Value;
 
     inline static jsT tojs(JSContext *c, actualT src) {
-        return INT_TO_JSVAL(src);
-    }
+        return INT_TO_JSVAL(src); }
 
     inline static backT back(JSContext *, JS::HandleValue src) {
-        return src.toInt32();
-    }
+        return src.toInt32(); } // does toInt32() proper here?
 
 };
 
 template<>
 struct caster<bool> {
+
     using actualT = bool;
     using backT = bool;
     using jsT = JS::Value;
 
     inline static jsT tojs(JSContext *c, actualT src) {
-        return BOOLEAN_TO_JSVAL(src);
-    }
+        return BOOLEAN_TO_JSVAL(src); }
 
     inline static backT back(JSContext *c, JS::HandleValue src) {
-        return src.toBoolean();
-    }
+        return src.toBoolean(); }
+
 };
 
 template<>
@@ -194,8 +182,7 @@ struct caster<const char *> {
     using jsT = JS::Value;
 
     inline static jsT tojs(JSContext *c, actualT src) {
-        return STRING_TO_JSVAL(JS_NewStringCopyZ(c, src));
-    }
+        return STRING_TO_JSVAL(JS_NewStringCopyZ(c, src)); }
 
 };
 
@@ -207,12 +194,10 @@ struct caster<std::string> {
     using jsT = JS::Value;
 
     inline static jsT tojs(JSContext *c, actualT src) {
-        return STRING_TO_JSVAL(JS_NewStringCopyZ(c, src.c_str()));
-    }
+        return STRING_TO_JSVAL(JS_NewStringCopyZ(c, src.c_str())); }
 
     inline static backT back(JSContext *c, JS::HandleValue src) {
-        return JS_EncodeString(c, JSVAL_TO_STRING(src));
-    }
+        return JS_EncodeString(c, JSVAL_TO_STRING(src)); }
 
 };
 
@@ -224,12 +209,10 @@ struct caster<std::string&> {
     using jsT = JS::Value;
 
     inline static jsT tojs(JSContext *c, actualT src) {
-        return STRING_TO_JSVAL(JS_NewStringCopyZ(c, src.c_str()));
-    }
+        return STRING_TO_JSVAL(JS_NewStringCopyZ(c, src.c_str())); }
 
     inline static backT back(JSContext *c, JS::HandleValue src) {
-        return JS_EncodeString(c, JSVAL_TO_STRING(src));
-    }
+        return JS_EncodeString(c, JSVAL_TO_STRING(src)); }
 
 };
 
@@ -241,15 +224,14 @@ struct caster<const std::string&> {
     using jsT = JS::Value;
 
     inline static jsT tojs(JSContext *c, actualT src) {
-        return STRING_TO_JSVAL(JS_NewStringCopyZ(c, src.c_str()));
-    }
+        return STRING_TO_JSVAL(JS_NewStringCopyZ(c, src.c_str())); }
 
     inline static backT back(JSContext *c, JS::HandleValue src) {
-        return JS_EncodeString(c, JSVAL_TO_STRING(src));
-    }
+        return JS_EncodeString(c, JSVAL_TO_STRING(src)); }
 
 };
 
 }
 }
+
 #endif
