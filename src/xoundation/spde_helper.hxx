@@ -107,6 +107,7 @@ class SpdRuntime {
         JS_SetErrorReporter(m_context, func); }
 
     JSContext *context() { return m_context; }
+    JSRuntime *runtime() { return m_runtime; }
 
     operator JSContext *() {
         return context(); }

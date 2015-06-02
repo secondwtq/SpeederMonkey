@@ -124,9 +124,7 @@ class class_helper {
 
     inline static void dtor_callback(JSFreeOp *op, JSObject *obj) {
         lifetime<T> *raw = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(obj));
-        printf("calling finalizer on %lx ...\n", raw);
-        delete raw;
-    }
+        delete raw; }
 
     template<typename ... Args>
     struct ctor_wrapper {
@@ -145,7 +143,7 @@ class class_helper {
             auto args_tuple = details::construct_args<typename caster<Args>::backT ...>(context,
                                                                                         args);
             lifetime<T> *t = new lifetime_js<T>(LIFETIME_PLACEMENT_CONSTRUCT);
-            T *raw = callback_internal(args_tuple, typename indices_builder
+            callback_internal(args_tuple, typename indices_builder
                     <sizeof ... (Args)>::type(), t->get());
             JS::RootedObject proto(context, info_t::instance()->jsc_proto);
             JSObject *jsobj = JS_NewObject(context, info_t::instance()->jsc_def, proto, JS::NullPtr());

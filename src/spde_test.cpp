@@ -121,11 +121,15 @@ void call_data(JS::HandleValue p) {
     JS_CallFunctionValue(srt->context(), self, raw->data, JS::HandleValueArray::empty(), &ret_pre);
 }
 
+void collectgarbage() {
+    JS_GC(srt->runtime()); }
+
 int parent::st = 2;
 
 int main(int argc, const char *argv[]) {
 
     srt = new SpdRuntime;
+    JS_SetGCCallback(srt->runtime(), spd_gc_callback, NULL);
 
     {
         JSAutoRequest at_req(*srt);
@@ -177,6 +181,9 @@ int main(int argc, const char *argv[]) {
 
         JS_DefineFunction(*srt, global, "call_data", spd::function_callback_wrapper<decltype
             (call_data), call_data>::callback, 1, attrs_func_default);
+
+        JS_DefineFunction(*srt, global, "collectgarbage", spd::function_callback_wrapper<decltype
+            (collectgarbage), collectgarbage>::callback, 1, attrs_func_default);
 
         native::register_interface_modules(*srt, global);
         node_native::register_interface_process(*srt, global, argc, argv);

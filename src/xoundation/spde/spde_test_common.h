@@ -14,8 +14,11 @@ inline bool print(JSContext *context, unsigned int argc, JS::Value *vp) {
 
     JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
 
-    for (size_t i = 0; i < args.length(); i++)
-        printf("%s", JS_EncodeString(context, JS::ToString(context, args[i])));
+    for (size_t i = 0; i < args.length(); i++) {
+        const char *t = JS_EncodeString(context, JS::ToString(context, args[i]));
+        printf("%s", t);
+        JS_free(context, const_cast<char *>(t));
+    }
     printf("\n");
     args.rval().setUndefined();
 
@@ -48,7 +51,6 @@ inline std::string readfile(const std::string& filename) {
 static unsigned attrs_func_default = JSPROP_ENUMERATE | JSPROP_PERMANENT | JSFUN_STUB_GSOPS;
 
 inline void spd_gc_callback(JSRuntime *rt, JSGCStatus status, void *data) {
-
-}
+    printf("mozjs - GC triggered, status %d\n", (int) status); }
 
 #endif
