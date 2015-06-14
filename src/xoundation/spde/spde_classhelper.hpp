@@ -152,8 +152,11 @@ class class_helper {
             return true;
         }
 
+        inline static bool callback_invalid(JSContext *context, unsigned int argc, JS::Value *vp) {
+            return true; }
+
         inline static void define(const std::string& name, JS::HandleObject global,
-                                  JS::HandleObject parent_proto = JS::NullPtr()) {
+                              JS::HandleObject parent_proto = JS::NullPtr(), bool use_invalid = false) {
             info_t *info = info_t::instance();
 
             JSClass *jsclass_def = reinterpret_cast<JSClass *>(malloc(sizeof(JSClass)));
@@ -168,16 +171,19 @@ class class_helper {
             memcpy((char *) info->jsc_def->name, name.c_str(), name.length() * sizeof(char));
             ((char *) info->jsc_def->name)[name.length()] = '\0';
 
+            JSNative ctor_callback = callback;
+            if (use_invalid) ctor_callback = callback_invalid;
             info->jsc_proto = JS_InitClass(info->context, global, parent_proto, info->jsc_def,
-                                           callback, 0, details::default_properties,
+                                           ctor_callback, 0, details::default_properties,
                                            details::default_funcs, nullptr, nullptr);
         }
 
         template<typename ParentT>
-        inline static void define(const std::string& name, JS::HandleObject global) {
+        inline static void define(const std::string& name, JS::HandleObject global,
+                                  bool use_invalid = false) {
             JS::RootedObject parent_proto(info_t::instance()->context,
                                           class_info<ParentT>::instance()->jsc_proto);
-            define(name, global, parent_proto);
+            define(name, global, parent_proto, use_invalid);
         }
 
     };
@@ -210,8 +216,9 @@ class class_helper {
 
     // convenient interface added 150529 EVE
     template <typename ... Args>
-    inline class_helper<T> define(const std::string& name, JS::HandleObject global) {
-        ctor_wrapper<Args ...>::define(name, global);
+    inline class_helper<T> define(const std::string& name, JS::HandleObject global,
+                                  bool use_invalid = false) {
+        ctor_wrapper<Args ...>::define(name, global, JS::NullPtr(), use_invalid);
         return *this;
     }
 
@@ -252,6 +259,15 @@ class class_helper {
         JS::RootedObject proto(info->context, info->jsc_proto);
         function_callback_wrapper<ProtoT, func>::register_func(info->context, proto, name.c_str());
 
+        return *this;
+    }
+
+    template <bool func (JSContext *, unsigned, JS::Value *)>
+    inline class_helper<T> raw_static(const std::string& name) {
+        info_t *info = info_t::instance();
+        JS::RootedObject proto(info->context, info->jsc_proto);
+        JS_DefineFunction(info->context, proto, name.c_str(), func, 0,
+                          JSPROP_PERMANENT | JSPROP_ENUMERATE | JSFUN_STUB_GSOPS);
         return *this;
     }
 

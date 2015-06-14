@@ -140,7 +140,7 @@ int main(int argc, const char *argv[]) {
 
         JSAutoCompartment at_comp(*srt, global);
         if (!JS_InitStandardClasses(*srt, global)) return 1;
-        JS_DefineFunction(*srt, global, "print", print, 5, attrs_func_default);
+        JS_DefineFunction(*srt, global, "print", xoundation::js_print, 5, attrs_func_default);
 
         spd::class_info<vx_test>::inst_wrapper::set(new spd::class_info<vx_test>(*srt));
         spd::class_helper<vx_test>::ctor_wrapper<int>::define("vx_test", global);

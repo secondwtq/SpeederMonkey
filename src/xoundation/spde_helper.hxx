@@ -122,7 +122,7 @@ class SpdRuntime {
 //        JSAutoCompartment cp(context(), global);
 //        if (!JS_InitStandardClasses(context(), global)) return JS::NullPtr();
 //        // JS_FireOnNewGlobalObject(context(), global);
-////        JS::MutableHandleObject h(&global);
+//        JS::MutableHandleObject h(&global);
 ////        if (!JS_WrapObject(context(), h)) {
 ////            fprintf(stderr, "SpdRuntime::create_global - wrapping failed!\n");
 ////            return JS::NullPtr();

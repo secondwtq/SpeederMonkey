@@ -10,8 +10,9 @@
 #include <string>
 #include <cstdio>
 
-inline bool print(JSContext *context, unsigned int argc, JS::Value *vp) {
+namespace xoundation {
 
+inline bool js_print(JSContext *context, unsigned int argc, JS::Value *vp) {
     JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
 
     for (size_t i = 0; i < args.length(); i++) {
@@ -25,20 +26,15 @@ inline bool print(JSContext *context, unsigned int argc, JS::Value *vp) {
     return true;
 }
 
-//static JSFunctionSpec js_global_funcs[] = {
-//        JS_FS("print", print, 0, 0),
-//        JS_FS_END // 150511 EVE: do not forget it or you'll get a NullPointerException
-//};
-
 inline std::string readfile(const std::string& filename) {
-    printf("::readfile - Reading %s ...\n", filename.c_str());
+    // printf("::readfile - Reading %s ...\n", filename.c_str());
     FILE *fp = fopen(filename.c_str(), "r");
 
     fseek(fp, 0, SEEK_END);
     long fsize = ftell(fp);
     rewind(fp);
 
-    char *ret = new char[fsize+1];
+    char *ret = new char[fsize + 1];
     fread(ret, static_cast<size_t>(fsize), 1, fp);
     ret[fsize] = '\0';
     std::string str_ret(ret);
@@ -52,5 +48,7 @@ static unsigned attrs_func_default = JSPROP_ENUMERATE | JSPROP_PERMANENT | JSFUN
 
 inline void spd_gc_callback(JSRuntime *rt, JSGCStatus status, void *data) {
     printf("mozjs - GC triggered, status %d\n", (int) status); }
+
+}
 
 #endif
