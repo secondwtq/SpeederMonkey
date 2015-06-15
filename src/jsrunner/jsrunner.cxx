@@ -10,17 +10,24 @@
 
 #include "xoundation/native/node_module.h"
 #include "xoundation/native/node_native_fs.h"
+#include "xoundation/native/node_buffer.hxx"
 #include "xoundation/spde/spde_test_common.h"
 
 using namespace xoundation;
 
+namespace jssh {
+
 void register_interfaces(SpdRuntime *srt, JS::HandleObject global, int argc, const char *argv[]) {
-    JS_DefineFunction(*srt, global, "print", xoundation::js_print, 1, xoundation::attrs_func_default);
+    JS_DefineFunction(*srt, global, "print", xoundation::js_print, 1,
+                      xoundation::attrs_func_default);
 
     native::register_interface_modules(*srt, global);
     node_native::register_interface_process(*srt, global, argc, argv);
     node_native::register_interface_os(*srt, global);
     node_native::register_interface_fs(*srt, global);
+    native::register_interface_buffer(*srt, global);
+}
+
 }
 
 int main(int argc, const char *argv[]) {
@@ -38,7 +45,7 @@ int main(int argc, const char *argv[]) {
         JSAutoCompartment at_comp(*srt, global);
         if (!JS_InitStandardClasses(*srt, global)) return 1;
 
-        register_interfaces(srt, global, argc, argv);
+        jssh::register_interfaces(srt, global, argc, argv);
 
         std::string source_pre = xoundation::readfile("./lib/node_module.js");
         JS::RootedValue ret_pre(*srt);

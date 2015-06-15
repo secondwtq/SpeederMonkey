@@ -197,8 +197,7 @@ class class_helper {
         template<typename U = ReturnT>
         inline static bool callback(JSContext *context, unsigned int argc, JS::Value *vp) {
             JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
-            auto args_tuple = details::construct_args<typename caster<Args>::backT ...>(context,
-                                                                                        args);
+            auto args_tuple = details::construct_args<typename caster<Args>::backT ...>(context, args);
             T *raw = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
             return details::method_callback_wrapper<ReturnT(T::*)(Args ...), func>::callback
                     (raw, context, args, args_tuple, typename indices_builder<sizeof ... (Args)
@@ -213,6 +212,13 @@ class class_helper {
         }
 
     };
+
+    template <bool (T::*func)(JSContext *, JS::CallArgs)>
+    inline static bool raw_method_callback(JSContext *context, unsigned int argc, JS::Value *vp) {
+        JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+        T *raw = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
+        return (raw->*func)(context, args);
+    }
 
     // convenient interface added 150529 EVE
     template <typename ... Args>
@@ -268,6 +274,16 @@ class class_helper {
         JS::RootedObject proto(info->context, info->jsc_proto);
         JS_DefineFunction(info->context, proto, name.c_str(), func, 0,
                           JSPROP_PERMANENT | JSPROP_ENUMERATE | JSFUN_STUB_GSOPS);
+        return *this;
+    }
+
+    template <bool (T::*func)(JSContext *, JS::CallArgs)>
+    inline class_helper<T> raw_method(const std::string& name, size_t nargs = 0) {
+        info_t *info = info_t::instance();
+        JS::RootedObject proto(info->context, info->jsc_proto);
+        JS_DefineFunction(info->context, proto, name.c_str(), raw_method_callback<func>, nargs,
+                        JSPROP_PERMANENT | JSPROP_ENUMERATE | JSFUN_STUB_GSOPS);
+
         return *this;
     }
 

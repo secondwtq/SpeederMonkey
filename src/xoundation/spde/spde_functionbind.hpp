@@ -21,9 +21,8 @@ namespace details {
 
 template<typename ... T, size_t ... N>
 inline std::tuple<typename caster<T>::backT ...> construct_args(JSContext *context, const
-JS::CallArgs& args, indices<N ...>) {
-    return std::forward_as_tuple<typename caster<T>::backT ...>(caster<T>::back(context, args[N]) ...);
-}
+        JS::CallArgs& args, indices<N ...>) {
+    return std::forward_as_tuple<typename caster<T>::backT ...>(caster<T>::back(context, args[N]) ...); }
 
 template<typename ... T>
 std::tuple<typename caster<T>::backT ...> construct_args(JSContext *context, const JS::CallArgs&
