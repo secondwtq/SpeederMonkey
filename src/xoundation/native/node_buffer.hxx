@@ -81,14 +81,18 @@ size_t write(char *buf, size_t buflen, char *org, size_t orglen, enum encoding e
 class buffer {
     public:
 
+    ~buffer() { this->_realloc(0); }
+
     size_t _realloc(size_t size) {
         if (m_data != nullptr) {
             delete m_data;
             m_data = nullptr;
             m_len = 0;
         }
-        m_data = new char[size+4];
-        m_len = size;
+        if (size > 0) {
+            m_data = new char[size+4];
+            m_len = size;
+        }
     }
 
     size_t _truncate(size_t size) {
