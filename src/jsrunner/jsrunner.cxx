@@ -8,6 +8,7 @@
 #include "xoundation/spde.hpp"
 #include "xoundation/spde_helper.hxx"
 
+#include "xoundation/native/speeder_native.hxx"
 #include "xoundation/native/node_module.h"
 #include "xoundation/native/node_native_fs.h"
 #include "xoundation/native/node_buffer.hxx"
@@ -18,14 +19,12 @@ using namespace xoundation;
 namespace jssh {
 
 void register_interfaces(SpdRuntime *srt, JS::HandleObject global, int argc, const char *argv[]) {
-    JS_DefineFunction(*srt, global, "print", xoundation::js_print, 1,
-                      xoundation::attrs_func_default);
-
     native::register_interface_modules(*srt, global);
     node_native::register_interface_process(*srt, global, argc, argv);
     node_native::register_interface_os(*srt, global);
     node_native::register_interface_fs(*srt, global);
     native::register_interface_buffer(*srt, global);
+    native::register_interface_speeder(*srt, global);
 }
 
 }

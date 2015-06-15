@@ -23,7 +23,7 @@ src/xoundation/spde/spde_functionbind.hpp src/xoundation/native/node_native_fs.h
 src/xoundation/spde.hpp src/xoundation/native/node_module.h src/xoundation/platform.h
 src/xoundation/spde_helper.hxx src/xoundation/spde/spde_vivalavida.hxx)
 
-add_executable(jsrunner src/jsrunner/jsrunner.cxx src/jsrunner/sh_native.hxx src/xoundation/native/node_buffer.hxx)
+add_executable(jsrunner src/jsrunner/jsrunner.cxx src/jsrunner/sh_native.hxx src/xoundation/native/node_buffer.hxx src/xoundation/native/speeder_native.hxx)
 
 if (USE_STATIC)
     target_link_libraries(mozjs js_static z)
