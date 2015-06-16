@@ -29,6 +29,8 @@ void register_interfaces(SpdRuntime *srt, JS::HandleObject global, int argc, con
 
 }
 
+#include <iostream>
+
 int main(int argc, const char *argv[]) {
 
     SpdRuntime *srt = nullptr;
@@ -46,7 +48,10 @@ int main(int argc, const char *argv[]) {
 
         jssh::register_interfaces(srt, global, argc, argv);
 
-        std::string source_pre = xoundation::readfile("./lib/node_module.js");
+        // TODO: a search path system
+        std::string execpath = xoundation::node_native::get_execpath(argv);
+        execpath = execpath.substr(0, execpath.rfind('/'));
+        std::string source_pre = xoundation::readfile(execpath + "/lib/node_module.js");
         JS::RootedValue ret_pre(*srt);
         JS_EvaluateScript(*srt, global, source_pre.c_str(), static_cast<unsigned int>(source_pre
                                             .length()), "node_module", 0, &ret_pre);

@@ -73,8 +73,7 @@ std::string os_platform() {
 // used in CoffeeScript cake
 std::string fs_read_file_sync(const std::string& filename) {
     FILE *fp = fopen(filename.c_str(), "r");
-    if (fp == nullptr) {
-        /* error */ }
+    if (fp == nullptr) { printf("%s\n", filename.c_str()); }
 
     fseek(fp, 0, SEEK_END);
     long fsize = ftell(fp);
@@ -286,6 +285,28 @@ void process_exit(int status) {
 #include <mach-o/dyld.h> // _NSGetExecutablePath
 #endif
 
+std::string get_execpath(const char *argv[]) {
+    constexpr size_t len_execpath = 2 * PATH_MAX;
+    char execpath[len_execpath] = { '\0' };
+
+    // TODO: platform specific part for Windows!
+    #ifdef CUBE_PLATFORM_MACH
+    char abspath[len_execpath] = { '\0' };
+    uint32_t darwin_exepath_len = len_execpath;
+    if (_NSGetExecutablePath(execpath, &darwin_exepath_len) == 0 &&
+        realpath(execpath, abspath) == abspath && strlen(abspath) > 0) {
+        memcpy(execpath, abspath, strlen(abspath) + 1);
+        memcpy(execpath, abspath, strlen(abspath) + 1);
+    } else strcpy(execpath, argv[0]);
+    #else
+    ssize_t n = readlink("/proc/self/exe", execpath, len_execpath-1);
+    if (n == -1) printf("Failed to get executable path\n"); // should be a LOG
+    execpath[n] = '\0';
+    #endif
+
+    return { execpath };
+}
+
 void register_interface_process_args(JSContext *context, JS::HandleObject process, int argc,
                                      const char *argv[]) {
     JS::AutoValueVector at_vec(context);
@@ -297,25 +318,9 @@ void register_interface_process_args(JSContext *context, JS::HandleObject proces
     JS_DefineProperty(context, process, "argv", argv_array, JSPROP_ENUMERATE | JSPROP_PERMANENT |
                                                             JSPROP_READONLY);
 
-    constexpr size_t len_execpath = 2 * PATH_MAX;
-    char execpath[len_execpath] = { '\0' };
+    std::string execpath = get_execpath(argv);
 
-    // TODO: platform specific part for Windows!
-    #ifdef CUBE_PLATFORM_MACH
-    char abspath[len_execpath] = { '\0' };
-    uint32_t darwin_exepath_len = len_execpath;
-    if (_NSGetExecutablePath(execpath, &darwin_exepath_len) == 0 &&
-            realpath(execpath, abspath) == abspath && strlen(abspath) > 0) {
-        memcpy(execpath, abspath, strlen(abspath) + 1);
-        memcpy(execpath, abspath, strlen(abspath) + 1);
-    } else strcpy(execpath, argv[0]);
-    #else
-    ssize_t n = readlink("/proc/self/exe", execpath, len_execpath-1);
-    if (n == -1) printf("Failed to get executable path\n"); // should be a LOG
-    execpath[n] = '\0';
-    #endif
-
-    JS::RootedString exec_path_handle(context, JS_NewStringCopyZ(context, execpath));
+    JS::RootedString exec_path_handle(context, JS_NewStringCopyZ(context, execpath.c_str()));
     JS_DefineProperty(context, process, "execPath", exec_path_handle,
                       JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_READONLY);
 

@@ -30,10 +30,16 @@ inline bool speeder_print(JSContext *context, unsigned int argc, JS::Value *vp) 
     return true;
 }
 
-inline std::string speeder_getline() {
+inline bool speeder_getline(JSContext *context, unsigned int argc, JS::Value *vp) {
+    JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
     std::string ret;
     getline(std::cin, ret);
-    return ret;
+    if (!std::cin) {
+        args.rval().setUndefined();
+        return true;
+    }
+    args.rval().set(spd::caster<std::string>::tojs(context, ret));
+    return true;
 }
 
 inline bool speeder_collectgarbage(JSContext *context, unsigned int argc, JS::Value *vp) {
@@ -49,8 +55,7 @@ void register_interface_speeder(JSContext *context, JS::HandleObject parent) {
 
     JS_DefineFunction(context, speeder, "print", speeder_print, 1, attrs_func_default);
     JS_DefineFunction(context, speeder, "collectgarbage", speeder_collectgarbage, 0, attrs_func_default);
-    JS_DefineFunction(context, speeder, "getline", spd::function_callback_wrapper<decltype(speeder_getline),
-                              speeder_getline>::callback, 0, attrs_func_default);
+    JS_DefineFunction(context, speeder, "getline", speeder_getline, 0, attrs_func_default);
 }
 
 }
