@@ -10,6 +10,7 @@
 
 #include <cstddef>
 #include <tuple>
+#include <type_traits>
 
 #include "spde_heroes.hpp"
 #include "spde_caster.hpp"
@@ -31,11 +32,11 @@ args) {
     return construct_args<T ...>(context, args, typename indices_builder<count>::type());
 }
 
-template<typename ProtoT, ProtoT& func>
+template<typename ProtoT, ProtoT& func, typename = void>
 struct callback_wrapper;
 
 template<typename ReturnT, typename ... Args, ReturnT (& func)(Args ...)>
-struct callback_wrapper<ReturnT(Args ...), func> {
+struct callback_wrapper<ReturnT(Args ...), func, typename std::enable_if<!std::is_void<ReturnT>::value>::type> {
     template<size_t ... N>
     inline static bool callback(JSContext *context, const JS::CallArgs& call_args,
                                 std::tuple<typename caster<Args>::backT ...> args, indices<N ...>) {
@@ -45,7 +46,7 @@ struct callback_wrapper<ReturnT(Args ...), func> {
 };
 
 template<typename ... Args, void (& func)(Args ...)>
-struct callback_wrapper<void(Args ...), func> {
+struct callback_wrapper<void(Args ...), func, void> {
     template<size_t ... N>
     inline static bool callback(JSContext *context, const JS::CallArgs& call_args,
                                 std::tuple<typename caster<Args>::backT ...> args, indices<N ...>) {

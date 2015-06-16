@@ -10,7 +10,6 @@ namespace details {
 
 static JSPropertySpec default_properties[] = { JS_PS_END };
 static JSFunctionSpec default_funcs[] = { JS_FS_END };
-static JSFunctionSpec default_static_funcs[] = { JS_FS_END };
 
 static JSClass default_class_def = {
         "$speeder_default_class",

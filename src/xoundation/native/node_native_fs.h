@@ -289,7 +289,7 @@ void process_exit(int status) {
 void register_interface_process_args(JSContext *context, JS::HandleObject process, int argc,
                                      const char *argv[]) {
     JS::AutoValueVector at_vec(context);
-    for (size_t i = 0; i < argc; i++)
+    for (size_t i = 0; i < static_cast<size_t>(argc); i++)
         at_vec.append(spd::caster<const std::string&>::tojs(context, { argv[i] }));
 
     JS::RootedObject argv_array(context, JS_NewArrayObject(context, at_vec));
@@ -299,10 +299,10 @@ void register_interface_process_args(JSContext *context, JS::HandleObject proces
 
     constexpr size_t len_execpath = 2 * PATH_MAX;
     char execpath[len_execpath] = { '\0' };
-    char abspath[len_execpath] = { '\0' };
 
     // TODO: platform specific part for Windows!
     #ifdef CUBE_PLATFORM_MACH
+    char abspath[len_execpath] = { '\0' };
     uint32_t darwin_exepath_len = len_execpath;
     if (_NSGetExecutablePath(execpath, &darwin_exepath_len) == 0 &&
             realpath(execpath, abspath) == abspath && strlen(abspath) > 0) {
@@ -310,7 +310,7 @@ void register_interface_process_args(JSContext *context, JS::HandleObject proces
         memcpy(execpath, abspath, strlen(abspath) + 1);
     } else strcpy(execpath, argv[0]);
     #else
-    size_t n = readlink("/proc/self/exe", execpath, len_execpath-1);
+    ssize_t n = readlink("/proc/self/exe", execpath, len_execpath-1);
     if (n == -1) printf("Failed to get executable path\n"); // should be a LOG
     execpath[n] = '\0';
     #endif

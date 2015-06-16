@@ -13,17 +13,18 @@
 #include "spde_functionbind.hpp"
 
 #include <string>
+#include <type_traits>
 
 namespace xoundation {
 namespace spd {
 
 namespace details {
 
-template<typename ProtoT, ProtoT func>
+template<typename ProtoT, ProtoT func, bool is_void>
 struct method_callback_wrapper;
 
 template<typename T, typename ReturnT, typename ... Args, ReturnT (T::*func)(Args ...)>
-struct method_callback_wrapper<ReturnT (T::*)(Args ...), func> {
+struct method_callback_wrapper<ReturnT (T::*)(Args ...), func, false> {
     template<size_t ... N>
     inline static bool callback(T *self, JSContext *context, const JS::CallArgs& call_args,
                                 std::tuple<typename caster<Args>::backT ...> args, indices<N ...>) {
@@ -33,7 +34,7 @@ struct method_callback_wrapper<ReturnT (T::*)(Args ...), func> {
 };
 
 template<typename T, typename ... Args, void (T::*func)(Args ...)>
-struct method_callback_wrapper<void (T::*)(Args ...), func> {
+struct method_callback_wrapper<void (T::*)(Args ...), func, true> {
     template<size_t ... N>
     inline static bool callback(T *self, JSContext *context, const JS::CallArgs& call_args,
                                 std::tuple<typename caster<Args>::backT ...> args, indices<N ...>) {
@@ -199,7 +200,7 @@ class class_helper {
             JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
             auto args_tuple = details::construct_args<typename caster<Args>::backT ...>(context, args);
             T *raw = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
-            return details::method_callback_wrapper<ReturnT(T::*)(Args ...), func>::callback
+            return details::method_callback_wrapper<ReturnT(T::*)(Args ...), func, std::is_void<ReturnT>::value>::callback
                     (raw, context, args, args_tuple, typename indices_builder<sizeof ... (Args)
                     >::type());
         }
@@ -207,7 +208,8 @@ class class_helper {
         static void register_as(const std::string& name) {
             info_t *info = info_t::instance();
             JS::RootedObject proto(info->context, info->jsc_proto);
-            JS_DefineFunction(info->context, proto, name.c_str(), callback, static_cast<unsigned
+            JS_DefineFunction(info->context, proto, name.c_str(),
+                              method_callback_wrapper<ReturnT (T::*)(Args ...), func>::callback, static_cast<unsigned
                 int>(sizeof ... (Args)), JSPROP_PERMANENT | JSPROP_ENUMERATE | JSFUN_STUB_GSOPS);
         }
 
