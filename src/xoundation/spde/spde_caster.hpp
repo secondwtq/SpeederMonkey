@@ -47,6 +47,9 @@ struct caster<T *> {
     using jsT = JS::Value;
 
     inline static jsT tojs(JSContext *c, actualT src) {
+        if (src == nullptr) {
+            return JS::UndefinedValue(); }
+
         JS::RootedObject proto(c, class_info<T>::instance()->jsc_proto);
         JSObject *jsobj = JS_NewObject(c, class_info<T>::instance()->jsc_def, proto, JS::NullPtr());
         lifetime<T> *lt = new lifetime_cxx<T>(src);
@@ -55,6 +58,8 @@ struct caster<T *> {
     }
 
     inline static backT back(JSContext *c, JS::HandleValue src) {
+        if (src.isUndefined()) {
+            return nullptr; }
         lifetime<T> *t = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(src.toObjectOrNull()));
         return t->get();
     }
@@ -78,6 +83,9 @@ struct caster<T&> {
     }
 
     inline static backT back(JSContext *c, JS::HandleValue src) {
+        if (src.isUndefined()) {
+            // TODO: cast undefined back to reference - an exception?
+        }
         lifetime<T> *t = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(src.toObjectOrNull()));
         return *(t->get());
     }
@@ -197,6 +205,9 @@ struct caster<const char *> {
     using jsT = JS::Value;
 
     inline static jsT tojs(JSContext *c, actualT src) {
+        // should this be undefined?
+        if (src == nullptr) {
+            return JS::UndefinedValue(); }
         return STRING_TO_JSVAL(JS_NewStringCopyZ(c, src)); }
 
 };

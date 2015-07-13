@@ -12,6 +12,7 @@
 
 #include <jsapi.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "spde/spde_classhelper.hpp"
 
@@ -61,10 +62,14 @@ class SpdRuntime {
 
     public:
 
+    /* 150617 fixed error reporter */
+    /* TODO: we still need more work on this */
     static inline void error_reporter(JSContext *context, const char *msg, JSErrorReport *rep) {
         (void) context; // a placeholder to suppress compiler warning
-        fprintf(stderr, "%s:%u: %s\n", rep->filename ? rep->filename : "[anonymous]",
-                rep->lineno, msg); }
+        fprintf(stderr, "%s: %u-%u: %s\t%s\n", rep->filename ? rep->filename : "[anonymous]",
+                rep->lineno, rep->column, rep->linebuf ? rep->linebuf : "\n", msg);
+        exit(-1);
+    }
 
     // tsc.js failed with strict mode
     SpdRuntime(size_t max_bytes = 32 * 1024L * 1024L, size_t stack_size = 4096,

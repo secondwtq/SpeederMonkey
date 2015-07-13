@@ -34,7 +34,7 @@ class vx_test {
 
     int test_readonly = 2;
 
-    vx_test *objref;
+    vx_test *objref = nullptr;
 
     int test = 3;
 
@@ -43,6 +43,7 @@ class vx_test {
         return a; }
 
     int test_func_objptr(int a, vx_test *o) {
+        printf("VXX: test_func_objptr: %d ptr: %lx\n", a, o);
         return o->test; }
 
     static int test_static_func(int a) {
