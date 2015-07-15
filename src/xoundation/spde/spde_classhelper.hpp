@@ -65,6 +65,49 @@ struct property_accessor {
     }
 };
 
+template <typename T, typename PropT>
+struct property_accessor_custom_base {
+
+    template<JS::Value (*func)(JSContext *, unsigned int, JS::Value *, JS::CallArgs&, T *, bool *)>
+    inline static bool getter(JSContext *context, unsigned int argc, JS::Value *vp) {
+        JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+        T *raw = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
+        bool succeeded = true;
+        args.rval().set((*func)(context, argc, vp, args, raw, &succeeded));
+        return succeeded;
+    }
+
+    template<void (*func)(JSContext *, unsigned int, JS::Value *, JS::CallArgs&, T *, JS::HandleValue, bool *)>
+    inline static bool setter(JSContext *context, unsigned int argc, JS::Value *vp) {
+        JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+        T *raw = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
+        bool succeeded = true;
+        (*func)(context, argc, vp, args, raw, args[0], &succeeded);
+        return succeeded;
+    }
+};
+
+template <typename T, typename PropT>
+struct property_accessor_general {
+
+    template<PropT (T::*func)()>
+    inline static JS::Value _getter(JSContext *ctx, unsigned int, JS::Value *, JS::CallArgs&, T *self, bool *) {
+        return caster<PropT>::tojs(ctx, (self->*func)()); }
+
+    template<void (T::*func)(PropT)>
+    inline static void _setter(JSContext *ctx, unsigned int, JS::Value *,
+                                    JS::CallArgs&, T *self, JS::HandleValue value, bool *) {
+        return (self->*func)(caster<PropT>::back(ctx, value)); }
+
+    template<PropT (T::*func)()>
+    inline static bool getter(JSContext *context, unsigned int argc, JS::Value *vp) {
+        return property_accessor_custom_base<T, PropT>::template getter<_getter<func>>(context, argc, vp); }
+
+    template<void (T::*func)(PropT)>
+    inline static bool setter(JSContext *context, unsigned int argc, JS::Value *vp) {
+        return property_accessor_custom_base<T, PropT>::template setter<_setter<func>>(context, argc, vp); }
+};
+
 template <typename T>
 struct property_accessor <T, JS::PersistentRootedValue> {
 
@@ -239,6 +282,21 @@ class class_helper {
     template<typename PropT, PropT T::*AttrT>
     inline class_helper<T> property(const std::string& name) {
         class_helper<T>::reg_property<PropT, AttrT>(name);
+        return *this;
+    }
+
+    template<typename PropT, PropT (T::*Getter)(), void (T::*Setter)(PropT)>
+    inline class_helper<T> accessor(const std::string& name, bool readonly = false) {
+        info_t *info = info_t::instance();
+
+        JS::RootedObject proto(info->context, info->jsc_proto);
+        JS_DefineProperty(info->context, proto, name.c_str(), JS::UndefinedHandleValue,
+                          JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_SHARED | JSPROP_NATIVE_ACCESSORS,
+                          reinterpret_cast<JSPropertyOp>
+                          (&(details::property_accessor_general<T, PropT>::template getter<Getter>)),
+                          reinterpret_cast<JSStrictPropertyOp>
+                          (&(details::property_accessor_general<T, PropT>::template setter<Setter>)));
+
         return *this;
     }
 

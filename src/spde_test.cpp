@@ -36,6 +36,21 @@ class vx_test {
 
     vx_test *objref = nullptr;
 
+    vx_test *get_objref() {
+        printf("vx_test: get_objref called.\n");
+        return this->objref;
+    }
+
+    void set_objref(vx_test *objref) {
+        printf("vx_test: set_objref called.\n");
+        this->objref = objref;
+    }
+
+    static vx_test *get_objref_static(vx_test *self) {
+        printf("vx_test: get_objref_static called.\n");
+        return self->objref;
+    }
+
     int test = 3;
 
     int test_func(int a) {
@@ -144,14 +159,12 @@ int main(int argc, const char *argv[]) {
         JS_DefineFunction(*srt, global, "print", xoundation::js_print, 5, attrs_func_default);
 
         spd::class_info<vx_test>::inst_wrapper::set(new spd::class_info<vx_test>(*srt));
-        spd::class_helper<vx_test>::ctor_wrapper<int>::define("vx_test", global);
-
-        spd::class_helper<vx_test>::reg_property<vx_test *, &vx_test::objref>("objref");
-        spd::class_helper<vx_test>::reg_property<int, &vx_test::test>("test");
-        spd::class_helper<vx_test>::method_callback_wrapper<decltype(&vx_test::test_func),
-                &vx_test::test_func>::register_as("test_func");
-        spd::class_helper<vx_test>::method_callback_wrapper<decltype(&vx_test::test_func_objptr),
-                &vx_test::test_func_objptr>::register_as("test_func_objptr");
+        klass<vx_test>().define<int>("vx_test", global)
+                    .property<int, &vx_test::test>("test")
+                    .property<vx_test *, &vx_test::objref>("objref")
+                    .accessor<vx_test *, &vx_test::get_objref, &vx_test::set_objref>("objref_acc")
+                    .method<decltype(&vx_test::test_func), &vx_test::test_func>("test_func")
+                    .method<decltype(&vx_test::test_func_objptr), &vx_test::test_func_objptr>("test_func_objptr");
 
         spd::class_info<parent>::inst_wrapper::set(new spd::class_info<parent>(*srt));
         klass<parent>().define<>("parent", global)
