@@ -63,4 +63,28 @@ struct lifetime_js : public lifetime<T> {
 }
 }
 
+#if !defined(XOUNDATION_DISABLE_STDSHARED)
+
+#include <memory>
+
+namespace xoundation {
+namespace spd {
+
+template<typename T>
+struct lifetime_shared_std : public lifetime<T> {
+
+    lifetime_shared_std(std::shared_ptr<T> ptr) : m_ptr(ptr) { }
+
+    T *get() override { return m_ptr.get(); }
+    std::shared_ptr<T> get_shared() { return m_ptr; }
+
+private:
+    std::shared_ptr<T> m_ptr;
+};
+
+}
+}
+
+#endif
+
 #endif // MOZJS_SPDE_VIVALAVIDA_HXX

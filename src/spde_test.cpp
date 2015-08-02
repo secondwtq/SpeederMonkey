@@ -3,6 +3,7 @@
 // Copyright (c) 2015 The Xoundation Project All rights reserved.
 //
 
+#include <memory>
 #include <jsapi.h>
 
 #include "xoundation/spde.hpp"
@@ -23,7 +24,7 @@ class vx_test {
     vx_test(int t) : test(t) {
         printf("VXX: vx_test constructing ... %d %lx\n", t, (unsigned long) this); }
 
-    ~vx_test() { printf("VXX: vx_test descructing ...\n"); }
+    ~vx_test() { printf("VXX: vx_test descructing ... %d\n", this->test); }
 
     vx_test(const vx_test& o) {
         this->test_readonly = o.test_readonly;
@@ -64,7 +65,17 @@ class vx_test {
     static int test_static_func(int a) {
         printf("VXX: vx_test::test_static_func.\n");
         return a; }
+
+    static std::shared_ptr<vx_test> sharedGlobal;
+
+    static void setShared(std::shared_ptr<vx_test> src) {
+        sharedGlobal = src; }
+
+    static std::shared_ptr<vx_test> createShared(int t) {
+        return std::make_shared<vx_test>(t); }
 };
+
+std::shared_ptr<vx_test> vx_test::sharedGlobal;
 
 void test_funbind_void() {
     printf("VXX: test_funbind_void\n"); }
@@ -164,7 +175,9 @@ int main(int argc, const char *argv[]) {
                     .property<vx_test *, &vx_test::objref>("objref")
                     .accessor<vx_test *, &vx_test::get_objref, &vx_test::set_objref>("objref_acc")
                     .method<decltype(&vx_test::test_func), &vx_test::test_func>("test_func")
-                    .method<decltype(&vx_test::test_func_objptr), &vx_test::test_func_objptr>("test_func_objptr");
+                    .method<decltype(&vx_test::test_func_objptr), &vx_test::test_func_objptr>("test_func_objptr")
+                    .static_func<decltype(vx_test::createShared), vx_test::createShared>("createShared")
+                    .static_func<decltype(vx_test::setShared), vx_test::setShared>("setShared");
 
         spd::class_info<parent>::inst_wrapper::set(new spd::class_info<parent>(*srt));
         klass<parent>().define<>("parent", global)

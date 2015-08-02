@@ -26,6 +26,11 @@
 #include <linux/limits.h>
 #endif
 
+#ifdef CUBE_PLATFORM_MACH
+#include <mach-o/dyld.h> // _NSGetExecutablePath
+#endif
+
+
 #include <jsapi.h>
 #include <xoundation/spde.hpp>
 #include <xoundation/spde/spde_test_common.h>
@@ -280,10 +285,6 @@ void process_chdir(const std::string& path) {
 // used in CoffeeScript cake
 void process_exit(int status) {
     exit(status); }
-
-#ifdef CUBE_PLATFORM_MACH
-#include <mach-o/dyld.h> // _NSGetExecutablePath
-#endif
 
 std::string get_execpath(const char *argv[]) {
     constexpr size_t len_execpath = 2 * PATH_MAX;

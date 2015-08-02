@@ -263,4 +263,48 @@ struct caster<const std::string&> {
 }
 }
 
+// well, I'm wrong.
+//  maybe WE NEED SHARED RUNTIME!
+//  currently you must provide something like
+//  factory that returns a std::shared_ptr<T>
+//  in C++ side for it
+#if !defined(XOUNDATION_DISABLE_STDSHARED)
+
+#include <memory>
+
+namespace xoundation {
+namespace spd {
+
+template<typename T>
+struct caster<std::shared_ptr<T>> {
+
+    using actualT = std::shared_ptr<T>;
+    using backT = std::shared_ptr<T>;
+    using jsT = JS::Value;
+
+    inline static jsT tojs(JSContext *c, actualT src) {
+        if (src == nullptr) {
+            return JS::UndefinedValue(); }
+
+        JS::RootedObject proto(c, class_info<T>::instance()->jsc_proto);
+        JSObject *jsobj = JS_NewObject(c, class_info<T>::instance()->jsc_def, proto, JS::NullPtr());
+        lifetime<T> *lt = new lifetime_shared_std<T>(src);
+        JS_SetPrivate(jsobj, reinterpret_cast<void *>(lt));
+        return OBJECT_TO_JSVAL(jsobj);
+    }
+
+    inline static backT back(JSContext *c, JS::HandleValue src) {
+        if (src.isUndefined()) {
+            return nullptr; }
+        lifetime_shared_std<T> *t = reinterpret_cast<lifetime_shared_std<T> *>(JS_GetPrivate(src.toObjectOrNull()));
+        return t->get_shared();
+    }
+
+};
+
+}
+}
+
+#endif
+
 #endif
