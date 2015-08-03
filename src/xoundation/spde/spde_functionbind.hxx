@@ -12,8 +12,8 @@
 #include <tuple>
 #include <type_traits>
 
-#include "spde_heroes.hpp"
-#include "spde_caster.hpp"
+#include "spde_heroes.hxx"
+#include "spde_caster.hxx"
 
 namespace xoundation {
 namespace spd {

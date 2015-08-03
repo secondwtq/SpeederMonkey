@@ -8,9 +8,9 @@
 
 #include <jsapi.h>
 
-#include "spde_classinfo.hpp"
-#include "spde_caster.hpp"
-#include "spde_functionbind.hpp"
+#include "spde_classinfo.hxx"
+#include "spde_caster.hxx"
+#include "spde_functionbind.hxx"
 
 #include <string>
 #include <type_traits>

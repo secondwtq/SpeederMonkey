@@ -8,8 +8,8 @@
 
 #include <jsapi.h>
 
-#include "spde_heroes.hpp"
-#include "spde_classinfo.hpp"
+#include "spde_heroes.hxx"
+#include "spde_classinfo.hxx"
 #include "spde_vivalavida.hxx"
 #include <string>
 

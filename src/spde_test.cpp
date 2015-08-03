@@ -6,11 +6,11 @@
 #include <memory>
 #include <jsapi.h>
 
-#include "xoundation/spde.hpp"
+#include "xoundation/spde.hxx"
 
-#include "xoundation/spde/spde_test_common.h"
-#include "xoundation/native/node_native_fs.h"
-#include "xoundation/native/node_module.h"
+#include "xoundation/spde/spde_test_common.hxx"
+#include "xoundation/native/node_native_fs.hxx"
+#include "xoundation/native/node_module.hxx"
 
 #include "xoundation/spde_helper.hxx"
 

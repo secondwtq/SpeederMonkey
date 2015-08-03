@@ -32,8 +32,8 @@
 
 
 #include <jsapi.h>
-#include <xoundation/spde.hpp>
-#include <xoundation/spde/spde_test_common.h>
+#include <xoundation/spde.hxx>
+#include <xoundation/spde/spde_test_common.hxx>
 
 namespace xoundation {
 

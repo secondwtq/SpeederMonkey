@@ -9,7 +9,7 @@
 #include <jsapi.h>
 
 #include "../spde_vivalavida.hxx"
-#include "../spde_caster.hpp"
+#include "../spde_caster.hxx"
 
 namespace xoundation {
 namespace spd {

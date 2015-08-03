@@ -8,8 +8,8 @@
 
 #include <jsapi.h>
 
-#include "../spde_heroes.hpp"
-#include "../spde_caster.hpp"
+#include "../spde_heroes.hxx"
+#include "../spde_caster.hxx"
 
 #include <type_traits>
 

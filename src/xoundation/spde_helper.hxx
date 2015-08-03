@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "spde/spde_classhelper.hpp"
+#include "spde/spde_classhelper.hxx"
 
 namespace xoundation {
 
