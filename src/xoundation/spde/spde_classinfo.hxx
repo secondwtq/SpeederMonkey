@@ -1,7 +1,7 @@
 #ifndef HEADER_SPEEDER_MONKEY_CLS_INFO
 #define HEADER_SPEEDER_MONKEY_CLS_INFO
 
-#include <jsapi.h>
+#include "../thirdpt/js_engine.hxx"
 
 namespace xoundation {
 namespace spd {

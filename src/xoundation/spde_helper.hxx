@@ -10,7 +10,8 @@
 #ifndef MOZJS_HELPER_HXX
 #define MOZJS_HELPER_HXX
 
-#include <jsapi.h>
+#include "./thirdpt/js_engine.hxx"
+
 #include <stdio.h>
 #include <stdlib.h>
 

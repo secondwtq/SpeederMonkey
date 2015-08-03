@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 project(mozjs)
 
-option(BUILDEBUG "enable -g" OFF)
 option(USE_STATIC "link with static mozjs binary (libjs_static.a)" OFF)
 
 # set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/lib/pkgconfig")
@@ -19,22 +18,30 @@ if(APPLE)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pagezero_size 10000 -image_base 100000000")
 endif(APPLE)
 
-if(BUILDEBUG)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
-endif()
+function(prepend var prefix)
+    set(listVar "")
+    foreach(f ${ARGN})
+        list(APPEND listVar "${prefix}/${f}")
+    endforeach(f)
+    set(${var} "${listVar}" PARENT_SCOPE)
+endfunction(prepend)
 
-set(SOURCE_FILES
-    src/xoundation/spde/spde_classinfo.hpp
-    src/spde_test.cpp)
+set(HEADERS_SPDE spde_caster.hxx spde_heroes.hxx spde_vivalavida.hxx spde_functionbind.hxx
+    spde_classinfo.hxx spde_classhelper.hxx spde_test_common.hxx details/spde_caster_ext.hxx
+    details/spde_method_callback_wrapper.hxx details/spde_property_accessor.hxx)
+prepend(HEADERS_SPDE "spde" ${HEADERS_SPDE})
 
-add_executable(mozjs ${SOURCE_FILES} src/xoundation/spde/spde_classhelper.hpp
-src/xoundation/spde/spde_caster.hpp src/spde_test.cpp
-src/xoundation/spde/spde_test_common.h src/xoundation/spde/spde_heroes.hpp
-src/xoundation/spde/spde_functionbind.hpp src/xoundation/native/node_native_fs.h
-src/xoundation/spde.hpp src/xoundation/native/node_module.h src/xoundation/platform.h
-src/xoundation/spde_helper.hxx src/xoundation/spde/spde_vivalavida.hxx src/xoundation/spde/details/spde_context_reference.hxx src/xoundation/spde/details/spde_method_callback_wrapper.hxx src/xoundation/spde/details/spde_property_accessor.hxx src/xoundation/spde/details/spde_caster_shared.hxx)
+set(HEADERS_XNATIVE node_module.hxx node_buffer.hxx node_native_fs.hxx speeder_native.hxx)
+prepend(HEADERS_XNATIVE "native" ${HEADERS_XNATIVE})
 
-add_executable(jsrunner src/jsrunner/jsrunner.cxx src/jsrunner/sh_native.hxx src/xoundation/native/node_buffer.hxx src/xoundation/native/speeder_native.hxx src/xoundation/spde/details/spde_context_reference.hxx src/xoundation/spde/details/spde_method_callback_wrapper.hxx src/xoundation/spde/details/spde_property_accessor.hxx src/xoundation/spde/details/spde_caster_shared.hxx)
+set(HEADERS_XOUNDATION ${HEADERS_SPDE} ${HEADERS_XNATIVE} platform.h spde.hxx spde_helper.hxx thirdpt/js_engine.hxx)
+prepend(HEADERS_XOUNDATION "xoundation" ${HEADERS_XOUNDATION})
+
+set(SOURCES_XOUNDATION ${SOURCES_XOUNDATION} ${HEADERS_XOUNDATION})
+prepend(SOURCES_XOUNDATION "src" ${SOURCES_XOUNDATION})
+
+add_executable(mozjs ${SOURCES_XOUNDATION} src/spde_test.cpp)
+add_executable(jsrunner ${SOURCES_XOUNDATION} src/jsrunner/jsrunner.cxx)
 
 if (USE_STATIC)
     target_link_libraries(mozjs js_static z)

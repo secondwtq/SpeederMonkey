@@ -6,7 +6,7 @@
 #ifndef MOZJS_SPDE_METHOD_CALLBACK_WRAPPER_HXX
 #define MOZJS_SPDE_METHOD_CALLBACK_WRAPPER_HXX
 
-#include <jsapi.h>
+#include "../../thirdpt/js_engine.hxx"
 
 #include "../spde_heroes.hxx"
 #include "../spde_caster.hxx"

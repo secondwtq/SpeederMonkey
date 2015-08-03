@@ -5,14 +5,14 @@
 
 #include <jsapi.h>
 
-#include "xoundation/spde.hpp"
+#include "xoundation/spde.hxx"
 #include "xoundation/spde_helper.hxx"
 
 #include "xoundation/native/speeder_native.hxx"
-#include "xoundation/native/node_module.h"
-#include "xoundation/native/node_native_fs.h"
+#include "xoundation/native/node_module.hxx"
+#include "xoundation/native/node_native_fs.hxx"
 #include "xoundation/native/node_buffer.hxx"
-#include "xoundation/spde/spde_test_common.h"
+#include "xoundation/spde/spde_test_common.hxx"
 
 using namespace xoundation;
 

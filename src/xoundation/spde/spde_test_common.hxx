@@ -6,7 +6,8 @@
 #ifndef MOZJS_SPDE_TEST_COMMON_H
 #define MOZJS_SPDE_TEST_COMMON_H
 
-#include <jsapi.h>
+#include "../thirdpt/js_engine.hxx"
+
 #include <string>
 #include <cstdio>
 

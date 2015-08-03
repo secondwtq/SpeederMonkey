@@ -6,7 +6,7 @@
 #ifndef HEADER_SPEEDER_MONKEY_CLS_HELPER
 #define HEADER_SPEEDER_MONKEY_CLS_HELPER
 
-#include <jsapi.h>
+#include "../thirdpt/js_engine.hxx"
 
 #include "spde_classinfo.hxx"
 #include "spde_caster.hxx"

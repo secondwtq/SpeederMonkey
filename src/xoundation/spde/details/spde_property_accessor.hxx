@@ -6,7 +6,7 @@
 #ifndef MOZJS_SPDE_PROPERTY_ACCESSOR_HXX
 #define MOZJS_SPDE_PROPERTY_ACCESSOR_HXX
 
-#include <jsapi.h>
+#include "../../thirdpt/js_engine.hxx"
 
 #include "../spde_vivalavida.hxx"
 #include "../spde_caster.hxx"

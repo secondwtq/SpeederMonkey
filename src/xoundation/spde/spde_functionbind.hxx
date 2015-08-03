@@ -6,7 +6,7 @@
 #ifndef HEADER_SPEEDER_MONKEY_BIND_FUNCTION
 #define HEADER_SPEEDER_MONKEY_BIND_FUNCTION
 
-#include <jsapi.h>
+#include "../thirdpt/js_engine.hxx"
 
 #include <cstddef>
 #include <tuple>

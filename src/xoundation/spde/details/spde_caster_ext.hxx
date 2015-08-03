@@ -6,7 +6,7 @@
 #ifndef MOZJS_SPDE_CONTEXT_REFERENCE_HXX
 #define MOZJS_SPDE_CONTEXT_REFERENCE_HXX
 
-#include <jsapi.h>
+#include "../../thirdpt/js_engine.hxx"
 
 namespace xoundation {
 namespace spd {
