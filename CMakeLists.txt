@@ -32,9 +32,9 @@ src/xoundation/spde/spde_caster.hpp src/spde_test.cpp
 src/xoundation/spde/spde_test_common.h src/xoundation/spde/spde_heroes.hpp
 src/xoundation/spde/spde_functionbind.hpp src/xoundation/native/node_native_fs.h
 src/xoundation/spde.hpp src/xoundation/native/node_module.h src/xoundation/platform.h
-src/xoundation/spde_helper.hxx src/xoundation/spde/spde_vivalavida.hxx)
+src/xoundation/spde_helper.hxx src/xoundation/spde/spde_vivalavida.hxx src/xoundation/spde/details/spde_context_reference.hxx src/xoundation/spde/details/spde_method_callback_wrapper.hxx src/xoundation/spde/details/spde_property_accessor.hxx src/xoundation/spde/details/spde_caster_shared.hxx)
 
-add_executable(jsrunner src/jsrunner/jsrunner.cxx src/jsrunner/sh_native.hxx src/xoundation/native/node_buffer.hxx src/xoundation/native/speeder_native.hxx)
+add_executable(jsrunner src/jsrunner/jsrunner.cxx src/jsrunner/sh_native.hxx src/xoundation/native/node_buffer.hxx src/xoundation/native/speeder_native.hxx src/xoundation/spde/details/spde_context_reference.hxx src/xoundation/spde/details/spde_method_callback_wrapper.hxx src/xoundation/spde/details/spde_property_accessor.hxx src/xoundation/spde/details/spde_caster_shared.hxx)
 
 if (USE_STATIC)
     target_link_libraries(mozjs js_static z)

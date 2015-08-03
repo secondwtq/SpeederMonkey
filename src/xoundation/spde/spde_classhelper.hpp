@@ -15,121 +15,11 @@
 #include <string>
 #include <type_traits>
 
+#include "./details/spde_method_callback_wrapper.hxx"
+#include "./details/spde_property_accessor.hxx"
+
 namespace xoundation {
 namespace spd {
-
-namespace details {
-
-template<typename ProtoT, ProtoT func, bool is_void>
-struct method_callback_wrapper;
-
-template<typename T, typename ReturnT, typename ... Args, ReturnT (T::*func)(Args ...)>
-struct method_callback_wrapper<ReturnT (T::*)(Args ...), func, false> {
-    template<size_t ... N>
-    inline static bool callback(T *self, JSContext *context, const JS::CallArgs& call_args,
-                                std::tuple<typename caster<Args>::backT ...> args, indices<N ...>) {
-        call_args.rval().set(caster<ReturnT>::tojs(context, (self->*func)(std::get<N>(args) ...)));
-        return true;
-    }
-};
-
-template<typename T, typename ... Args, void (T::*func)(Args ...)>
-struct method_callback_wrapper<void (T::*)(Args ...), func, true> {
-    template<size_t ... N>
-    inline static bool callback(T *self, JSContext *context, const JS::CallArgs& call_args,
-                                std::tuple<typename caster<Args>::backT ...> args, indices<N ...>) {
-        (self->*func)(std::get<N>(args) ...);
-        call_args.rval().setUndefined();
-        return true;
-    }
-};
-
-template <typename T, typename PropT>
-struct property_accessor {
-
-    template<PropT T::*AttrT>
-    inline static bool default_getter(JSContext *context, unsigned int argc, JS::Value *vp) {
-        JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
-        T *raw = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
-        args.rval().set(caster<PropT>::tojs(context, raw->*AttrT));
-        return true;
-    }
-
-    template<PropT T::*AttrT>
-    inline static bool default_setter(JSContext *context, unsigned int argc, JS::Value *vp) {
-        JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
-        T *raw = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
-        raw->*AttrT = caster<PropT>::back(context, args[0]);
-
-        return true;
-    }
-};
-
-template <typename T, typename PropT>
-struct property_accessor_custom_base {
-
-    template<JS::Value (*func)(JSContext *, unsigned int, JS::Value *, JS::CallArgs&, T *, bool *)>
-    inline static bool getter(JSContext *context, unsigned int argc, JS::Value *vp) {
-        JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
-        T *raw = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
-        bool succeeded = true;
-        args.rval().set((*func)(context, argc, vp, args, raw, &succeeded));
-        return succeeded;
-    }
-
-    template<void (*func)(JSContext *, unsigned int, JS::Value *, JS::CallArgs&, T *, JS::HandleValue, bool *)>
-    inline static bool setter(JSContext *context, unsigned int argc, JS::Value *vp) {
-        JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
-        T *raw = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
-        bool succeeded = true;
-        (*func)(context, argc, vp, args, raw, args[0], &succeeded);
-        return succeeded;
-    }
-};
-
-template <typename T, typename PropT>
-struct property_accessor_general {
-
-    template<PropT (T::*func)()>
-    inline static JS::Value _getter(JSContext *ctx, unsigned int, JS::Value *, JS::CallArgs&, T *self, bool *) {
-        return caster<PropT>::tojs(ctx, (self->*func)()); }
-
-    template<void (T::*func)(PropT)>
-    inline static void _setter(JSContext *ctx, unsigned int, JS::Value *,
-                                    JS::CallArgs&, T *self, JS::HandleValue value, bool *) {
-        return (self->*func)(caster<PropT>::back(ctx, value)); }
-
-    template<PropT (T::*func)()>
-    inline static bool getter(JSContext *context, unsigned int argc, JS::Value *vp) {
-        return property_accessor_custom_base<T, PropT>::template getter<_getter<func>>(context, argc, vp); }
-
-    template<void (T::*func)(PropT)>
-    inline static bool setter(JSContext *context, unsigned int argc, JS::Value *vp) {
-        return property_accessor_custom_base<T, PropT>::template setter<_setter<func>>(context, argc, vp); }
-};
-
-template <typename T>
-struct property_accessor <T, JS::PersistentRootedValue> {
-
-    template<JS::PersistentRootedValue T::*AttrT>
-    inline static bool default_getter(JSContext *context, unsigned int argc, JS::Value *vp) {
-        JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
-        T *raw = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
-        args.rval().set(raw->*AttrT);
-        return true;
-    }
-
-    template<JS::PersistentRootedValue T::*AttrT>
-    inline static bool default_setter(JSContext *context, unsigned int argc, JS::Value *vp) {
-        JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
-        T *raw = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
-        raw->*AttrT = args[0];
-        return true;
-    }
-
-};
-
-}
 
 template<typename T>
 class class_helper {
@@ -200,14 +90,15 @@ class class_helper {
             return true; }
 
         inline static void define(const std::string& name, JS::HandleObject global,
-                              JS::HandleObject parent_proto = JS::NullPtr(), bool use_invalid = false) {
+                              JS::HandleObject parent_proto = JS::NullPtr(), bool use_invalid = false,
+                              JSClass *js_class_def = &details::default_class_def) {
             info_t *info = info_t::instance();
 
             JSClass *jsclass_def = reinterpret_cast<JSClass *>(malloc(sizeof(JSClass)));
             info->jsc_def = jsclass_def;
             memset(jsclass_def, 0, sizeof(JSClass)); // you *must* init it or it would
             // lead to undefined behaviour
-            memcpy(jsclass_def, &details::default_class_def, sizeof(JSClass));
+            memcpy(jsclass_def, js_class_def, sizeof(JSClass));
             info->jsc_def->finalize = dtor_callback;
 
             // TODO: dunno how the memory for the name string should be dealed with
@@ -248,12 +139,34 @@ class class_helper {
                     >::type());
         }
 
-        static void register_as(const std::string& name) {
+        inline static void register_as(const std::string& name) {
             info_t *info = info_t::instance();
             JS::RootedObject proto(info->context, info->jsc_proto);
             JS_DefineFunction(info->context, proto, name.c_str(),
                               method_callback_wrapper<ReturnT (T::*)(Args ...), func>::callback, static_cast<unsigned
                 int>(sizeof ... (Args)), JSPROP_PERMANENT | JSPROP_ENUMERATE | JSFUN_STUB_GSOPS);
+        }
+
+    };
+
+    template<typename ReturnT, typename ... Args, ReturnT (T::*func)(Args ...) const>
+    struct method_callback_wrapper<ReturnT (T::*)(Args ...) const, func> {
+
+        template<typename U = ReturnT>
+        inline static bool callback(JSContext *context, unsigned int argc, JS::Value *vp) {
+            JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+            auto args_tuple = details::construct_args<typename caster<Args>::backT ...>(context, args);
+            const T *raw = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
+            return details::method_callback_wrapper<ReturnT(T::*)(Args ...) const, func, std::is_void<ReturnT>::value>::callback
+                    (raw, context, args, args_tuple, typename indices_builder<sizeof ... (Args)>::type());
+        }
+
+        inline static void register_as(const std::string& name) {
+            info_t *info = info_t::instance();
+            JS::RootedObject proto(info->context, info->jsc_proto);
+            JS_DefineFunction(info->context, proto, name.c_str(),
+                              method_callback_wrapper<ReturnT (T::*)(Args ...) const, func>::callback, static_cast<unsigned
+                    int>(sizeof ... (Args)), JSPROP_PERMANENT | JSPROP_ENUMERATE | JSFUN_STUB_GSOPS);
         }
 
     };
@@ -268,8 +181,8 @@ class class_helper {
     // convenient interface added 150529 EVE
     template <typename ... Args>
     inline class_helper<T> define(const std::string& name, JS::HandleObject global,
-                                  bool use_invalid = false) {
-        ctor_wrapper<Args ...>::define(name, global, JS::NullPtr(), use_invalid);
+                                  bool use_invalid = false, JSClass *js_class_def = &details::default_class_def) {
+        ctor_wrapper<Args ...>::define(name, global, JS::NullPtr(), use_invalid, js_class_def);
         return *this;
     }
 

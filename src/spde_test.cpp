@@ -109,8 +109,6 @@ class parent {
 
     static int st;
 
-//    JS::RootedValue *data;
-//    JS::HandleValue *data;
     JS::PersistentRootedValue data;
 
     static int getst() { return st; }
@@ -152,6 +150,89 @@ void collectgarbage() {
     JS_GC(srt->runtime()); }
 
 int parent::st = 2;
+
+class TestClassValueWrap {
+public:
+
+    TestClassValueWrap() : data(*srt) { }
+
+    ~TestClassValueWrap() {
+        printf("Destructing TestClassValueWrap ...\n"); }
+
+    JS::PersistentRootedValue data;
+
+    void print_data(spd::context_reference context) const {
+        char *t = JS_EncodeString(context, JS::ToString(context, this->data));
+        printf("%s\n", t);
+        JS_free(context, t);
+    }
+
+    void print_property(const std::string& name, spd::context_reference context) const {
+        JS::RootedObject inner_data(context);
+        JSObject *obj = data.get().toObjectOrNull();
+        if (obj) {
+            inner_data.set(obj);
+            JS::RootedValue val(context);
+            JS_GetProperty(context, inner_data, name.c_str(), &val);
+            char *t = JS_EncodeString(context, JS::ToString(context, val));
+            printf("%s\n", t);
+            JS_free(context, t);
+        }
+    }
+
+    static std::shared_ptr<TestClassValueWrap> createShared() {
+        return std::make_shared<TestClassValueWrap>(); }
+
+};
+
+bool proxy_resolve(JSContext *context, JS::HandleObject obj, JS::HandleId id, JS::MutableHandleObject objp) {
+    std::string name = spd::tostring_jsid(context, id);
+    printf("Stub: resolving %s \n", name.c_str());
+    if (TestClassValueWrap *self = spd::get_wrapper_object<TestClassValueWrap>(obj)) {
+        JS::RootedObject proto(context);
+        JS::RootedValue val(context);
+        JS_GetPrototype(context, obj, &proto);
+        if (!JS_LookupPropertyById(context, proto, id, &val) || val.isUndefined()) {
+            JSObject *objdata = self->data.get().toObjectOrNull();
+            if (objdata) {
+                printf("Stub: setting to data %s \n", name.c_str());
+                objp.set(objdata);
+                return true;
+            }
+        }
+    }
+    objp.set(obj);
+    return true;
+}
+
+bool proxy_add_property(JSContext *context, JS::HandleObject obj, JS::HandleId id,
+                        JS::MutableHandleValue vp) {
+    char *name = JS_EncodeString(context, JSID_TO_STRING(id));
+    printf("Stub: adding %s \n", name);
+    JS_free(context, name);
+
+    void *ltdata = JS_GetPrivate(obj);
+    if (ltdata) {
+        TestClassValueWrap *self = reinterpret_cast<spd::lifetime<TestClassValueWrap> *>(ltdata)->get();
+        JSObject *objdatap = self->data.get().toObjectOrNull();
+        if (objdatap) {
+            printf("Stub: adding %s to data\n", name);
+            JS::RootedObject objdata(context, objdatap);
+            JS_SetPropertyById(context, objdata, id, vp);
+            return true;
+        }
+    }
+    return true;
+}
+
+static JSClass proxyClassDef = {
+        "proxyClassValueWrap",
+        JSCLASS_HAS_PRIVATE | JSCLASS_NEW_RESOLVE,
+        proxy_add_property, JS_DeletePropertyStub,
+        JS_PropertyStub, JS_StrictPropertyStub,
+        JS_EnumerateStub, (JSResolveOp) proxy_resolve, JS_ConvertStub,
+        nullptr, nullptr, nullptr, nullptr, nullptr,
+};
 
 int main(int argc, const char *argv[]) {
 
@@ -196,9 +277,16 @@ int main(int argc, const char *argv[]) {
                     .method<decltype(&child::func_child), &child::func_child>("func_child")
                     .property<int, &child::b>("b");
 
+        spd::class_info<TestClassValueWrap>::inst_wrapper::set(new spd::class_info<TestClassValueWrap>(*srt));
+        klass<TestClassValueWrap>().define<>("TestClassValueWrap", global, false, &proxyClassDef)
+                    .property<JS::PersistentRootedValue, &TestClassValueWrap::data>("data")
+                    .method<decltype(&TestClassValueWrap::print_data), &TestClassValueWrap::print_data>("print_data")
+                    .method<decltype(&TestClassValueWrap::print_property), &TestClassValueWrap::print_property>
+                        ("print_property");
+
         JS_DefineFunction(*srt, global, "test_funbind_objptr",
                           spd::function_callback_wrapper<int (int, vx_test *), test_funbind_objptr>::callback,
-                                                                              2, attrs_func_default);
+                          2, attrs_func_default);
         JS_DefineFunction(*srt, global, "test_funbind_void",
                           spd::function_callback_wrapper<void (), test_funbind_void>::callback, 0,
                                                                               attrs_func_default);

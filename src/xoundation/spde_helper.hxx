@@ -27,6 +27,25 @@ static JSClass cls_global = {
     JS_GlobalObjectTraceHook
 };
 
+namespace spd {
+
+template<typename T>
+inline T *get_wrapper_object(JS::HandleObject src) {
+    if (void *rawp = JS_GetPrivate(src)) {
+        return reinterpret_cast<spd::lifetime<T> *>(rawp)->get();
+    }
+    return nullptr;
+}
+
+inline std::string tostring_jsid(JSContext *context, jsid src) {
+    char *raw = JS_EncodeString(context, JSID_TO_STRING(src));
+    std::string ret(raw);
+    JS_free(context, raw);
+    return ret;
+}
+
+}
+
 // helpers, 150529 EVE
 template <typename T>
 using klass = spd::class_helper<T>;

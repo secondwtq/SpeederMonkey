@@ -48,7 +48,8 @@ struct caster<T *> {
 
     inline static jsT tojs(JSContext *c, actualT src) {
         if (src == nullptr) {
-            return JS::UndefinedValue(); }
+            return JS::UndefinedValue();
+        }
 
         JS::RootedObject proto(c, class_info<T>::instance()->jsc_proto);
         JSObject *jsobj = JS_NewObject(c, class_info<T>::instance()->jsc_def, proto, JS::NullPtr());
@@ -59,7 +60,8 @@ struct caster<T *> {
 
     inline static backT back(JSContext *c, JS::HandleValue src) {
         if (src.isUndefined()) {
-            return nullptr; }
+            return nullptr;
+        }
         lifetime<T> *t = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(src.toObjectOrNull()));
         return t->get();
     }
@@ -108,36 +110,6 @@ struct caster<const T&> {
 };
 
 template<>
-struct caster<JS::MutableHandleValue> {
-
-    using actualT = JS::MutableHandleValue;
-    using backT = JS::MutableHandleValue;
-    using jsT = JS::MutableHandleValue;
-
-    inline static jsT tojs(JSContext *c, actualT src) {
-        return src; }
-
-    inline static backT back(JSContext *c, JS::MutableHandleValue src) {
-        return src; }
-
-};
-
-template<>
-struct caster<JS::HandleValue> {
-
-    using actualT = JS::HandleValue;
-    using jsT = JS::HandleValue;
-    using backT = JS::HandleValue;
-
-    inline static jsT tojs(JSContext *c, actualT src) {
-        return src; }
-
-    inline static backT back(JSContext *c, JS::HandleValue src) {
-        return src; }
-
-};
-
-template<>
 struct caster<int> {
 
     using actualT = int;
@@ -145,10 +117,12 @@ struct caster<int> {
     using jsT = JS::Value;
 
     inline static jsT tojs(JSContext *c, actualT src) {
-        return INT_TO_JSVAL(src); }
+        return INT_TO_JSVAL(src);
+    }
 
     inline static backT back(JSContext *, JS::HandleValue src) {
-        return src.toInt32(); }
+        return src.toInt32();
+    }
 
 };
 
@@ -160,10 +134,12 @@ struct caster<long> {
     using jsT = JS::Value;
 
     inline static jsT tojs(JSContext *c, actualT src) {
-        return INT_TO_JSVAL(src); }
+        return INT_TO_JSVAL(src);
+    }
 
     inline static backT back(JSContext *, JS::HandleValue src) {
-        return src.toInt32(); } // does toInt32() proper here?
+        return src.toInt32();
+    } // does toInt32() proper here?
 
 };
 
@@ -175,10 +151,12 @@ struct caster<size_t> {
     using jsT = JS::Value;
 
     inline static jsT tojs(JSContext *c, actualT src) {
-        return UINT_TO_JSVAL(static_cast<unsigned int>(src)); }
+        return UINT_TO_JSVAL(static_cast<unsigned int>(src));
+    }
 
     inline static backT back(JSContext *, JS::HandleValue src) {
-        return src.toInt32(); }
+        return src.toInt32();
+    }
 
 };
 
@@ -190,10 +168,12 @@ struct caster<bool> {
     using jsT = JS::Value;
 
     inline static jsT tojs(JSContext *c, actualT src) {
-        return BOOLEAN_TO_JSVAL(src); }
+        return BOOLEAN_TO_JSVAL(src);
+    }
 
     inline static backT back(JSContext *c, JS::HandleValue src) {
-        return src.toBoolean(); }
+        return src.toBoolean();
+    }
 
 };
 
@@ -207,8 +187,10 @@ struct caster<const char *> {
     inline static jsT tojs(JSContext *c, actualT src) {
         // should this be undefined?
         if (src == nullptr) {
-            return JS::UndefinedValue(); }
-        return STRING_TO_JSVAL(JS_NewStringCopyZ(c, src)); }
+            return JS::UndefinedValue();
+        }
+        return STRING_TO_JSVAL(JS_NewStringCopyZ(c, src));
+    }
 
 };
 
@@ -220,10 +202,12 @@ struct caster<std::string> {
     using jsT = JS::Value;
 
     inline static jsT tojs(JSContext *c, actualT src) {
-        return STRING_TO_JSVAL(JS_NewStringCopyZ(c, src.c_str())); }
+        return STRING_TO_JSVAL(JS_NewStringCopyZ(c, src.c_str()));
+    }
 
     inline static backT back(JSContext *c, JS::HandleValue src) {
-        return JS_EncodeString(c, JSVAL_TO_STRING(src)); }
+        return JS_EncodeString(c, JSVAL_TO_STRING(src));
+    }
 
 };
 
@@ -235,10 +219,12 @@ struct caster<std::string&> {
     using jsT = JS::Value;
 
     inline static jsT tojs(JSContext *c, actualT src) {
-        return STRING_TO_JSVAL(JS_NewStringCopyZ(c, src.c_str())); }
+        return STRING_TO_JSVAL(JS_NewStringCopyZ(c, src.c_str()));
+    }
 
     inline static backT back(JSContext *c, JS::HandleValue src) {
-        return JS_EncodeString(c, JSVAL_TO_STRING(src)); }
+        return JS_EncodeString(c, JSVAL_TO_STRING(src));
+    }
 
 };
 
@@ -250,54 +236,14 @@ struct caster<const std::string&> {
     using jsT = JS::Value;
 
     inline static jsT tojs(JSContext *c, actualT src) {
-        return STRING_TO_JSVAL(JS_NewStringCopyZ(c, src.c_str())); }
+        return STRING_TO_JSVAL(JS_NewStringCopyZ(c, src.c_str()));
+    }
 
     inline static backT back(JSContext *c, JS::HandleValue src) {
         const char *t = JS_EncodeString(c, JSVAL_TO_STRING(src));
         std::string ret(t);
         JS_free(c, const_cast<char *>(t));
-        return ret; }
-
-};
-
-}
-}
-
-// well, I'm wrong.
-//  maybe WE NEED SHARED RUNTIME!
-//  currently you must provide something like
-//  factory that returns a std::shared_ptr<T>
-//  in C++ side for it
-#if !defined(XOUNDATION_DISABLE_STDSHARED)
-
-#include <memory>
-
-namespace xoundation {
-namespace spd {
-
-template<typename T>
-struct caster<std::shared_ptr<T>> {
-
-    using actualT = std::shared_ptr<T>;
-    using backT = std::shared_ptr<T>;
-    using jsT = JS::Value;
-
-    inline static jsT tojs(JSContext *c, actualT src) {
-        if (src == nullptr) {
-            return JS::UndefinedValue(); }
-
-        JS::RootedObject proto(c, class_info<T>::instance()->jsc_proto);
-        JSObject *jsobj = JS_NewObject(c, class_info<T>::instance()->jsc_def, proto, JS::NullPtr());
-        lifetime<T> *lt = new lifetime_shared_std<T>(src);
-        JS_SetPrivate(jsobj, reinterpret_cast<void *>(lt));
-        return OBJECT_TO_JSVAL(jsobj);
-    }
-
-    inline static backT back(JSContext *c, JS::HandleValue src) {
-        if (src.isUndefined()) {
-            return nullptr; }
-        lifetime_shared_std<T> *t = reinterpret_cast<lifetime_shared_std<T> *>(JS_GetPrivate(src.toObjectOrNull()));
-        return t->get_shared();
+        return ret;
     }
 
 };
@@ -305,6 +251,6 @@ struct caster<std::shared_ptr<T>> {
 }
 }
 
-#endif
+#include "details/spde_caster_ext.hxx"
 
 #endif
