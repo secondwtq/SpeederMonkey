@@ -3,6 +3,8 @@
 
 #include "../thirdpt/js_engine.hxx"
 
+#include <assert.h>
+
 namespace xoundation {
 namespace spd {
 
@@ -34,21 +36,67 @@ class class_info {
         public:
 
         inline static class_info<T> *get() { return _ret; }
-
         inline static class_info<T> *set(class_info<T> *src) {
-            return (_ret = src);
-        }
+            return (_ret = src); }
 
     };
 
     inline static class_info<T> *instance() { return inst_wrapper::get(); }
 
-    class_info(JSContext *ct) : context(ct) { }
+    class_info(JSContext *ct, const char *name, JSClass *classdef = &details::default_class_def,
+        JSClass *proto_classdef = &details::default_class_def) : class_info(ct, name, nullptr, classdef, proto_classdef) { }
+
+    class_info(JSContext *ct, const char *name, const char *protoname,
+               JSClass *classdef, JSClass *proto_classdef) :
+            context(ct), jsc_def(classdef_cloner(classdef).get()),
+            jsc_def_proto(classdef_cloner(proto_classdef).get()) {
+
+        char *new_name = (char *) malloc((strlen(name) + 1) * sizeof(char));
+        strcpy(new_name, name);
+        new_name[strlen(new_name)] = '\0';
+        jsc_def->name = new_name;
+
+        /*
+        char *new_protoname = nullptr;
+        if (!protoname) {
+            new_protoname = (char *) malloc((strlen(name) + strlen("Proto") + 1) * sizeof(char));
+            strcpy(new_protoname, new_name);
+            strcat(new_protoname, "Proto");
+        } else {
+            new_protoname = (char *) malloc((strlen(protoname) + 1) * sizeof(char));
+            strcpy(new_protoname, protoname);
+        }
+        new_protoname[strlen(new_protoname)] = '\0';
+        */
+
+        jsc_def_proto->name = new_name; // new_protoname;
+    }
 
     JSContext *context = nullptr;
     // TODO: replace with JS::PersistentRooted
     JSClass *jsc_def = nullptr;
+    JSClass *jsc_def_proto = nullptr;
     JSObject *jsc_proto = nullptr;
+
+private:
+
+    struct classdef_cloner {
+        classdef_cloner(JSClass *src) :
+                m_ref(reinterpret_cast<JSClass *>(malloc(sizeof(JSClass )))) {
+            assert(src);
+            assert(this->m_ref);
+
+            memset(m_ref, 0, sizeof(JSClass));
+            memcpy(m_ref, src, sizeof(JSClass));
+        }
+
+        JSClass *get() {
+            return this->m_ref; }
+
+    private:
+
+        JSClass *m_ref = nullptr;
+    };
 
 };
 

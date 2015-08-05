@@ -11,9 +11,12 @@
 #include "spde_heroes.hxx"
 #include "spde_classinfo.hxx"
 #include "spde_vivalavida.hxx"
+#include "details/spde_intrusive_object.hxx"
 #include <string>
 
 #include <cassert>
+
+#include <type_traits>
 
 namespace xoundation {
 namespace spd {
@@ -24,6 +27,12 @@ struct caster {
     using backT = const T&;
     using jsT = JS::Value;
 
+    // used when a C++ function returns T is called from JS
+    //
+    //      (ok you guys love to use 'JS' instead of 'JavaScript', 'javascript',
+    //       'Javascript', 'script' or whatever, then I use 'JS' too...)
+    //  ctor of T called from JS uses a different mechanism, since
+    //  it has a JS lifetime by default, see details/spde_constructor.hxx.
     inline static jsT tojs(JSContext *c, actualT src) {
         JS::RootedObject proto(c, class_info<T>::instance()->jsc_proto);
         JSObject *jsobj = JS_NewObject(c, class_info<T>::instance()->jsc_def, proto, JS::NullPtr());
@@ -32,9 +41,47 @@ struct caster {
         return OBJECT_TO_JSVAL(jsobj);
     }
 
+    // used when a C++ function called from JS
+    //  reads arguments passed from JS
     inline static backT back(JSContext *c, JS::HandleValue src) {
         lifetime<T> *t = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(src.toObjectOrNull()));
         return *(t->get());
+    }
+
+};
+
+template <typename T, bool is_intrusive = std::is_base_of<intrusive_object<T>, T>::value>
+struct micro_caster_ptr;
+
+template <typename T>
+struct micro_caster_ptr<T, false> {
+
+    inline static JS::Value tojs(JSContext *c, T *src) {
+        if (src == nullptr) {
+            return JS::UndefinedValue(); }
+
+        JS::RootedObject proto(c, class_info<T>::instance()->jsc_proto);
+        JSObject *jsobj = JS_NewObject(c, class_info<T>::instance()->jsc_def, proto, JS::NullPtr());
+        lifetime<T> *lt = new lifetime_cxx<T>(src);
+        JS_SetPrivate(jsobj, reinterpret_cast<void *>(lt));
+        return OBJECT_TO_JSVAL(jsobj);
+    }
+
+};
+
+template <typename T>
+struct micro_caster_ptr<T, true> {
+
+    inline static JS::Value tojs(JSContext *c, T *src) {
+        if (src == nullptr) {
+            return JS::UndefinedValue(); }
+
+        if (!details::get_instrusive_wrapper(src).inited()) {
+            JS::RootedValue ret(c, micro_caster_ptr<T, false>::tojs(c, reinterpret_cast<T *>(src)));
+            details::get_instrusive_wrapper(src).init(c);
+            details::get_instrusive_wrapper(src).get()->set(ret.toObjectOrNull());
+            return ret;
+        } else { return JS::ObjectOrNullValue(*(details::get_instrusive_wrapper(src).get())); }
     }
 
 };
@@ -47,21 +94,11 @@ struct caster<T *> {
     using jsT = JS::Value;
 
     inline static jsT tojs(JSContext *c, actualT src) {
-        if (src == nullptr) {
-            return JS::UndefinedValue();
-        }
-
-        JS::RootedObject proto(c, class_info<T>::instance()->jsc_proto);
-        JSObject *jsobj = JS_NewObject(c, class_info<T>::instance()->jsc_def, proto, JS::NullPtr());
-        lifetime<T> *lt = new lifetime_cxx<T>(src);
-        JS_SetPrivate(jsobj, reinterpret_cast<void *>(lt));
-        return OBJECT_TO_JSVAL(jsobj);
-    }
+        return micro_caster_ptr<T>().tojs(c, src); }
 
     inline static backT back(JSContext *c, JS::HandleValue src) {
         if (src.isUndefined()) {
-            return nullptr;
-        }
+            return nullptr; }
         lifetime<T> *t = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(src.toObjectOrNull()));
         return t->get();
     }
@@ -76,13 +113,7 @@ struct caster<T&> {
     using jsT = JS::Value;
 
     inline static jsT tojs(JSContext *c, actualT src) {
-        JS::RootedObject proto(c, class_info<T>::instance()->jsc_proto);
-        JSObject *jsobj = JS_NewObject(c, class_info<T>::instance()->jsc_def, proto, JS::NullPtr());
-        lifetime<T> *lt = new lifetime_cxx<T>(&src);
-        printf("setting private T& %lx ...\n", &src);
-        JS_SetPrivate(jsobj, reinterpret_cast<void *>(lt));
-        return OBJECT_TO_JSVAL(jsobj);
-    }
+        return micro_caster_ptr<T>().tojs(c, &src); }
 
     inline static backT back(JSContext *c, JS::HandleValue src) {
         if (src.isUndefined()) {
@@ -109,148 +140,11 @@ struct caster<const T&> {
 
 };
 
-template<>
-struct caster<int> {
-
-    using actualT = int;
-    using backT = int;
-    using jsT = JS::Value;
-
-    inline static jsT tojs(JSContext *c, actualT src) {
-        return INT_TO_JSVAL(src);
-    }
-
-    inline static backT back(JSContext *, JS::HandleValue src) {
-        return src.toInt32();
-    }
-
-};
-
-template<>
-struct caster<long> {
-
-    using actualT = long;
-    using backT = long;
-    using jsT = JS::Value;
-
-    inline static jsT tojs(JSContext *c, actualT src) {
-        return INT_TO_JSVAL(src);
-    }
-
-    inline static backT back(JSContext *, JS::HandleValue src) {
-        return src.toInt32();
-    } // does toInt32() proper here?
-
-};
-
-template<>
-struct caster<size_t> {
-
-    using actualT = size_t;
-    using backT = size_t;
-    using jsT = JS::Value;
-
-    inline static jsT tojs(JSContext *c, actualT src) {
-        return UINT_TO_JSVAL(static_cast<unsigned int>(src));
-    }
-
-    inline static backT back(JSContext *, JS::HandleValue src) {
-        return src.toInt32();
-    }
-
-};
-
-template<>
-struct caster<bool> {
-
-    using actualT = bool;
-    using backT = bool;
-    using jsT = JS::Value;
-
-    inline static jsT tojs(JSContext *c, actualT src) {
-        return BOOLEAN_TO_JSVAL(src);
-    }
-
-    inline static backT back(JSContext *c, JS::HandleValue src) {
-        return src.toBoolean();
-    }
-
-};
-
-template<>
-struct caster<const char *> {
-
-    using actualT = const char *;
-    using backT = const char *;
-    using jsT = JS::Value;
-
-    inline static jsT tojs(JSContext *c, actualT src) {
-        // should this be undefined?
-        if (src == nullptr) {
-            return JS::UndefinedValue();
-        }
-        return STRING_TO_JSVAL(JS_NewStringCopyZ(c, src));
-    }
-
-};
-
-template<>
-struct caster<std::string> {
-
-    using actualT = const std::string&;
-    using backT = std::string;
-    using jsT = JS::Value;
-
-    inline static jsT tojs(JSContext *c, actualT src) {
-        return STRING_TO_JSVAL(JS_NewStringCopyZ(c, src.c_str()));
-    }
-
-    inline static backT back(JSContext *c, JS::HandleValue src) {
-        return JS_EncodeString(c, JSVAL_TO_STRING(src));
-    }
-
-};
-
-template<>
-struct caster<std::string&> {
-
-    using actualT = const std::string&;
-    using backT = std::string;
-    using jsT = JS::Value;
-
-    inline static jsT tojs(JSContext *c, actualT src) {
-        return STRING_TO_JSVAL(JS_NewStringCopyZ(c, src.c_str()));
-    }
-
-    inline static backT back(JSContext *c, JS::HandleValue src) {
-        return JS_EncodeString(c, JSVAL_TO_STRING(src));
-    }
-
-};
-
-template<>
-struct caster<const std::string&> {
-
-    using actualT = const std::string&;
-    using backT = std::string;
-    using jsT = JS::Value;
-
-    inline static jsT tojs(JSContext *c, actualT src) {
-        return STRING_TO_JSVAL(JS_NewStringCopyZ(c, src.c_str()));
-    }
-
-    inline static backT back(JSContext *c, JS::HandleValue src) {
-        const char *t = JS_EncodeString(c, JSVAL_TO_STRING(src));
-        std::string ret(t);
-        JS_free(c, const_cast<char *>(t));
-        return ret;
-    }
-
-};
-
 }
 }
 
+#include "details/spde_caster_numeric.hxx"
+#include "details/spde_caster_string.hxx"
 #include "details/spde_caster_ext.hxx"
 
 #endif

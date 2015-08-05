@@ -33,8 +33,7 @@ namespace spd {
 template<typename T>
 inline T *get_wrapper_object(JS::HandleObject src) {
     if (void *rawp = JS_GetPrivate(src)) {
-        return reinterpret_cast<spd::lifetime<T> *>(rawp)->get();
-    }
+        return reinterpret_cast<spd::lifetime<T> *>(rawp)->get(); }
     return nullptr;
 }
 
@@ -44,6 +43,9 @@ inline std::string tostring_jsid(JSContext *context, jsid src) {
     JS_free(context, raw);
     return ret;
 }
+
+inline JSClass *get_default_classdef() {
+    return &details::default_class_def; }
 
 }
 

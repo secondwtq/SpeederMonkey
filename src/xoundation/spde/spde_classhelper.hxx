@@ -15,6 +15,7 @@
 #include <string>
 #include <type_traits>
 
+#include "./details/spde_constructor.hxx"
 #include "./details/spde_method_callback_wrapper.hxx"
 #include "./details/spde_property_accessor.hxx"
 
@@ -55,73 +56,6 @@ class class_helper {
                           reinterpret_cast<JSStrictPropertyOp>
                           (&(details::property_accessor<T, PropT>::template default_setter<AttrT>)));
     }
-
-    inline static void dtor_callback(JSFreeOp *op, JSObject *obj) {
-        lifetime<T> *raw = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(obj));
-        delete raw; }
-
-    template<typename ... Args>
-    struct ctor_wrapper {
-
-        template<size_t ... N>
-        inline static T *callback_internal(std::tuple<Args ...> args, indices<N ...>) {
-            return new T(std::get<N>(args) ...); }
-
-        // for placement new
-        template<size_t ... N>
-        inline static T *callback_internal(std::tuple<Args ...> args, indices<N ...>, void *ptr) {
-            return new (ptr) T(std::get<N>(args) ...); }
-
-        inline static bool callback(JSContext *context, unsigned int argc, JS::Value *vp) {
-            JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
-            auto args_tuple = details::construct_args<typename caster<Args>::backT ...>(context,
-                                                                                        args);
-            lifetime<T> *t = new lifetime_js<T>(LIFETIME_PLACEMENT_CONSTRUCT);
-            callback_internal(args_tuple, typename indices_builder
-                    <sizeof ... (Args)>::type(), t->get());
-            JS::RootedObject proto(context, info_t::instance()->jsc_proto);
-            JSObject *jsobj = JS_NewObject(context, info_t::instance()->jsc_def, proto, JS::NullPtr());
-            JS_SetPrivate(jsobj, reinterpret_cast<void *>(t));
-            args.rval().set(OBJECT_TO_JSVAL(jsobj));
-            return true;
-        }
-
-        inline static bool callback_invalid(JSContext *context, unsigned int argc, JS::Value *vp) {
-            return true; }
-
-        inline static void define(const std::string& name, JS::HandleObject global,
-                              JS::HandleObject parent_proto = JS::NullPtr(), bool use_invalid = false,
-                              JSClass *js_class_def = &details::default_class_def) {
-            info_t *info = info_t::instance();
-
-            JSClass *jsclass_def = reinterpret_cast<JSClass *>(malloc(sizeof(JSClass)));
-            info->jsc_def = jsclass_def;
-            memset(jsclass_def, 0, sizeof(JSClass)); // you *must* init it or it would
-            // lead to undefined behaviour
-            memcpy(jsclass_def, js_class_def, sizeof(JSClass));
-            info->jsc_def->finalize = dtor_callback;
-
-            // TODO: dunno how the memory for the name string should be dealed with
-            info->jsc_def->name = (char *) malloc((name.length() + 1) * sizeof(char));
-            memcpy((char *) info->jsc_def->name, name.c_str(), name.length() * sizeof(char));
-            ((char *) info->jsc_def->name)[name.length()] = '\0';
-
-            JSNative ctor_callback = callback;
-            if (use_invalid) ctor_callback = callback_invalid;
-            info->jsc_proto = JS_InitClass(info->context, global, parent_proto, info->jsc_def,
-                                           ctor_callback, 0, details::default_properties,
-                                           details::default_funcs, nullptr, nullptr);
-        }
-
-        template<typename ParentT>
-        inline static void define(const std::string& name, JS::HandleObject global,
-                                  bool use_invalid = false) {
-            JS::RootedObject parent_proto(info_t::instance()->context,
-                                          class_info<ParentT>::instance()->jsc_proto);
-            define(name, global, parent_proto, use_invalid);
-        }
-
-    };
 
     template<typename ProtoT, ProtoT func>
     struct method_callback_wrapper;
@@ -178,17 +112,30 @@ class class_helper {
         return (raw->*func)(context, args);
     }
 
-    // convenient interface added 150529 EVE
     template <typename ... Args>
-    inline class_helper<T> define(const std::string& name, JS::HandleObject global,
-                                  bool use_invalid = false, JSClass *js_class_def = &details::default_class_def) {
-        ctor_wrapper<Args ...>::define(name, global, JS::NullPtr(), use_invalid, js_class_def);
+    inline class_helper<T> define(JS::HandleObject global, bool use_invalid = false, JS::HandleObject parent_proto = JS::NullPtr()) {
+        info_t *info = info_t::instance();
+        using callbacks = details::ctor_callback<T, Args ...>;
+
+        info->jsc_def->finalize = callbacks::dtor_callback;
+
+        JSNative ctor_callback = callbacks::callback;
+        if (use_invalid) {
+            ctor_callback = callbacks::callback_invalid; }
+        info->jsc_proto = JS_InitClass(info->context, global, parent_proto, info->jsc_def_proto,
+                                       ctor_callback, 0, details::default_properties,
+                                       details::default_funcs, nullptr, nullptr);
+
         return *this;
     }
 
-    template <typename ParentT, typename ... Args>
-    inline class_helper<T> inherits(const std::string& name, JS::HandleObject global) {
-        ctor_wrapper<Args ...>::template define<ParentT>(name, global);
+    // overloaded helper for inheritance
+    template<typename ParentT, typename ... Args>
+    inline class_helper<T> inherits(JS::HandleObject global, bool use_invalid = false) {
+        JS::RootedObject parent_proto(info_t::instance()->context,
+                                      class_info<ParentT>::instance()->jsc_proto);
+        define(global, use_invalid, parent_proto);
+
         return *this;
     }
 

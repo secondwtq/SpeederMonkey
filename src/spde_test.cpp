@@ -185,17 +185,25 @@ public:
 
 };
 
-bool proxy_resolve(JSContext *context, JS::HandleObject obj, JS::HandleId id, JS::MutableHandleObject objp) {
+bool proxy_resolve(JSContext *context, JS::HandleObject obj,
+                   JS::HandleId id, JS::MutableHandleObject objp) {
     std::string name = spd::tostring_jsid(context, id);
-    printf("Stub: resolving %s \n", name.c_str());
+    printf("Stub: resolving %s\n", name.c_str());
+
     if (TestClassValueWrap *self = spd::get_wrapper_object<TestClassValueWrap>(obj)) {
         JS::RootedObject proto(context);
         JS::RootedValue val(context);
-        JS_GetPrototype(context, obj, &proto);
+        if (!JS_GetPrototype(context, obj, &proto)) {
+            return true; }
         if (!JS_LookupPropertyById(context, proto, id, &val) || val.isUndefined()) {
-            JSObject *objdata = self->data.get().toObjectOrNull();
-            if (objdata) {
-                printf("Stub: setting to data %s \n", name.c_str());
+            JSObject *objdatap = self->data.get().toObjectOrNull();
+            if (objdatap) {
+                JS::RootedObject objdata(context, objdatap);
+                if (!JS_LookupPropertyById(context, objdata, id, &val) || val.isUndefined()) {
+                    printf("Lookup failed, adding %s\n", name.c_str());
+                    JS::RootedValue v(context, JSVAL_TRUE);
+                    JS_SetProperty(context, objdata, name.c_str(), v);
+                }
                 objp.set(objdata);
                 return true;
             }
@@ -205,21 +213,46 @@ bool proxy_resolve(JSContext *context, JS::HandleObject obj, JS::HandleId id, JS
     return true;
 }
 
-bool proxy_add_property(JSContext *context, JS::HandleObject obj, JS::HandleId id,
-                        JS::MutableHandleValue vp) {
-    char *name = JS_EncodeString(context, JSID_TO_STRING(id));
-    printf("Stub: adding %s \n", name);
-    JS_free(context, name);
+bool proxy_add_property(JSContext *context, JS::HandleObject obj,
+                        JS::HandleId id, JS::MutableHandleValue vp) {
+    std::string name = spd::tostring_jsid(context, id);
+    printf("Stub: adding %s \n", name.c_str());
 
-    void *ltdata = JS_GetPrivate(obj);
-    if (ltdata) {
-        TestClassValueWrap *self = reinterpret_cast<spd::lifetime<TestClassValueWrap> *>(ltdata)->get();
+    if (TestClassValueWrap *self = spd::get_wrapper_object<TestClassValueWrap>(obj)) {
         JSObject *objdatap = self->data.get().toObjectOrNull();
         if (objdatap) {
-            printf("Stub: adding %s to data\n", name);
             JS::RootedObject objdata(context, objdatap);
-            JS_SetPropertyById(context, objdata, id, vp);
-            return true;
+            return JS_SetPropertyById(context, objdata, id, vp);
+        }
+    }
+    return true;
+}
+
+bool proxy_set_property(JSContext *context, JS::HandleObject obj,
+                        JS::HandleId id, bool strict, JS::MutableHandleValue vp) {
+    std::string name = spd::tostring_jsid(context, id);
+    printf("Stub: setting %s\n", name.c_str());
+
+    if (TestClassValueWrap *self = spd::get_wrapper_object<TestClassValueWrap>(obj)) {
+        JSObject *objdatap = self->data.get().toObjectOrNull();
+        if (objdatap) {
+            JS::RootedObject objdata(context, objdatap);
+            return JS_SetPropertyById(context, objdata, id, vp);
+        }
+    }
+    return true;
+}
+
+bool proxy_get_property(JSContext *context, JS::HandleObject obj,
+                        JS::HandleId id, JS::MutableHandleValue vp) {
+    std::string name = spd::tostring_jsid(context, id);
+    printf("Stub: getting %s \n", name.c_str());
+
+    if (TestClassValueWrap *self = spd::get_wrapper_object<TestClassValueWrap>(obj)) {
+        JSObject *objdatap = self->data.get().toObjectOrNull();
+        if (objdatap) {
+            JS::RootedObject objdata(context, objdatap);
+            return JS_GetPropertyById(context, objdata, id, vp);
         }
     }
     return true;
@@ -233,6 +266,28 @@ static JSClass proxyClassDef = {
         JS_EnumerateStub, (JSResolveOp) proxy_resolve, JS_ConvertStub,
         nullptr, nullptr, nullptr, nullptr, nullptr,
 };
+
+class TestIntrusiveObjectForControl {
+public:
+
+    int internalData = 0;
+
+};
+
+class TestIntrusiveObject : public TestIntrusiveObjectForControl, public spd::intrusive_object<TestIntrusiveObject> {
+public:
+
+    int getExternalData(spd::context_reference context) {
+        JS::RootedObject intr(context, spd::get_intrusive_object(this));
+        JS::RootedValue ret(context);
+        JS_GetProperty(context, intr, "externalData", &ret);
+        return ret.toInt32();
+    }
+
+};
+
+template <typename T>
+inline T *passAround(T *src) { return src; }
 
 int main(int argc, const char *argv[]) {
 
@@ -250,8 +305,8 @@ int main(int argc, const char *argv[]) {
         if (!JS_InitStandardClasses(*srt, global)) return 1;
         JS_DefineFunction(*srt, global, "print", xoundation::js_print, 5, attrs_func_default);
 
-        spd::class_info<vx_test>::inst_wrapper::set(new spd::class_info<vx_test>(*srt));
-        klass<vx_test>().define<int>("vx_test", global)
+        spd::class_info<vx_test>::inst_wrapper::set(new spd::class_info<vx_test>(*srt, "vx_test"));
+        klass<vx_test>().define<int>(global)
                     .property<int, &vx_test::test>("test")
                     .property<vx_test *, &vx_test::objref>("objref")
                     .accessor<vx_test *, &vx_test::get_objref, &vx_test::set_objref>("objref_acc")
@@ -260,8 +315,8 @@ int main(int argc, const char *argv[]) {
                     .static_func<decltype(vx_test::createShared), vx_test::createShared>("createShared")
                     .static_func<decltype(vx_test::setShared), vx_test::setShared>("setShared");
 
-        spd::class_info<parent>::inst_wrapper::set(new spd::class_info<parent>(*srt));
-        klass<parent>().define<>("parent", global)
+        spd::class_info<parent>::inst_wrapper::set(new spd::class_info<parent>(*srt, "parent"));
+        klass<parent>().define<>(global)
                     .property<int, &parent::a>("a")
                     .property<JS::PersistentRootedValue, &parent::data>("data")
                     .method<decltype(&parent::func), &parent::func>("func")
@@ -271,18 +326,38 @@ int main(int argc, const char *argv[]) {
                     .static_prop<int, &parent::st>("st")
                     .static_func<decltype(parent::getst), parent::getst>("getst");
 
-        spd::class_info<child>::inst_wrapper::set(new spd::class_info<child>(*srt));
-        klass<child>().inherits<parent>("child", global)
+        spd::class_info<child>::inst_wrapper::set(new spd::class_info<child>(*srt, "child"));
+        klass<child>().inherits<parent>(global)
                     .method<decltype(&child::func), &child::func>("func")
                     .method<decltype(&child::func_child), &child::func_child>("func_child")
                     .property<int, &child::b>("b");
 
-        spd::class_info<TestClassValueWrap>::inst_wrapper::set(new spd::class_info<TestClassValueWrap>(*srt));
-        klass<TestClassValueWrap>().define<>("TestClassValueWrap", global, false, &proxyClassDef)
+        spd::class_info<TestClassValueWrap>::inst_wrapper::set(new spd::class_info<TestClassValueWrap>(*srt,
+                                           "TestClassValueWrap", &proxyClassDef, spd::get_default_classdef()));
+        klass<TestClassValueWrap>().define<>(global)
                     .property<JS::PersistentRootedValue, &TestClassValueWrap::data>("data")
                     .method<decltype(&TestClassValueWrap::print_data), &TestClassValueWrap::print_data>("print_data")
                     .method<decltype(&TestClassValueWrap::print_property), &TestClassValueWrap::print_property>
-                        ("print_property");
+                        ("print_property")
+                    .static_func<decltype(TestClassValueWrap::createShared), TestClassValueWrap::createShared>("createShared");
+
+        spd::class_info<TestIntrusiveObjectForControl>::inst_wrapper::set(
+                new spd::class_info<TestIntrusiveObjectForControl>(*srt, "TestIntrusiveObjectForControl"));
+        klass<TestIntrusiveObjectForControl>().define<>(global)
+                .property<int, &TestIntrusiveObjectForControl::internalData>("internalData");
+
+        spd::class_info<TestIntrusiveObject>::inst_wrapper::set(
+                new spd::class_info<TestIntrusiveObject>(*srt, "TestIntrusiveObject"));
+        klass<TestIntrusiveObject>().inherits<TestIntrusiveObjectForControl>(global)
+                .method<decltype(&TestIntrusiveObject::getExternalData), &TestIntrusiveObject::getExternalData>
+                        ("getExternalData");
+
+        JS_DefineFunction(*srt, global, "passAroundTestIntrusiveControl",
+            spd::function_callback_wrapper<decltype(passAround<TestIntrusiveObjectForControl>),
+                    passAround<TestIntrusiveObjectForControl>>::callback, 1, attrs_func_default);
+        JS_DefineFunction(*srt, global, "passAroundTestIntrusive",
+                          spd::function_callback_wrapper<decltype(passAround<TestIntrusiveObject>),
+                                  passAround<TestIntrusiveObject>>::callback, 1, attrs_func_default);
 
         JS_DefineFunction(*srt, global, "test_funbind_objptr",
                           spd::function_callback_wrapper<int (int, vx_test *), test_funbind_objptr>::callback,

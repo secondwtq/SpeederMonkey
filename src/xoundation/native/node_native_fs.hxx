@@ -211,13 +211,13 @@ void fs_unlink_sync(const std::string& path) {
     }
 }
 
-void register_interface_fs(JSContext *context, JS::Handle<JSObject *> parent) {
+void register_interface_fs(JSContext *context, JS::HandleObject parent) {
 
     JS::RootedObject node_fs(context, JS_DefineObject(context, parent, "_node_native_fs", nullptr, nullptr,
                                                       JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_READONLY));
 
-    spd::class_info<stats>::inst_wrapper::set(new spd::class_info<stats>(context));
-    spd::class_helper<stats>::ctor_wrapper<>::define("Stats", parent);
+    spd::class_info<stats>::inst_wrapper::set(new spd::class_info<stats>(context, "Stats"));
+    spd::class_helper<stats>().define<>(parent);
     spd::class_helper<stats>::method_callback_wrapper<decltype(&stats::is_file),
                                                     &stats::is_file>::register_as("isFile");
     spd::class_helper<stats>::method_callback_wrapper<decltype(&stats::is_directory),
