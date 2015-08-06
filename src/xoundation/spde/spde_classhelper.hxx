@@ -134,7 +134,8 @@ class class_helper {
     inline class_helper<T> inherits(JS::HandleObject global, bool use_invalid = false) {
         JS::RootedObject parent_proto(info_t::instance()->context,
                                       class_info<ParentT>::instance()->jsc_proto);
-        define(global, use_invalid, parent_proto);
+        // so how is it forwarded without this by default?
+        define<Args ...>(global, use_invalid, parent_proto);
 
         return *this;
     }
@@ -151,11 +152,11 @@ class class_helper {
 
         JS::RootedObject proto(info->context, info->jsc_proto);
         JS_DefineProperty(info->context, proto, name.c_str(), JS::UndefinedHandleValue,
-                          JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_SHARED | JSPROP_NATIVE_ACCESSORS,
-                          reinterpret_cast<JSPropertyOp>
-                          (&(details::property_accessor_general<T, PropT>::template getter<Getter>)),
-                          reinterpret_cast<JSStrictPropertyOp>
-                          (&(details::property_accessor_general<T, PropT>::template setter<Setter>)));
+            JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_SHARED | JSPROP_NATIVE_ACCESSORS,
+            reinterpret_cast<JSPropertyOp>
+            (&(details::property_accessor_general<T, PropT>::template getter<Getter>)),
+            reinterpret_cast<JSStrictPropertyOp>
+            (&(details::property_accessor_general<T, PropT>::template setter<Setter>)));
 
         return *this;
     }
