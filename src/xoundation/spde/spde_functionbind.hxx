@@ -15,6 +15,9 @@
 #include "spde_heroes.hxx"
 #include "spde_caster.hxx"
 
+// TODO: things in this hxx is pretty old and very hard to use, needs retreading.
+//
+// TODO: some macros to avoid the syntactic pitfalls in the interface.
 namespace xoundation {
 namespace spd {
 

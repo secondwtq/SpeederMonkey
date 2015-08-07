@@ -30,7 +30,7 @@ set(HEADERS_SPDE spde_caster.hxx spde_heroes.hxx spde_vivalavida.hxx spde_functi
     spde_classinfo.hxx spde_classhelper.hxx spde_test_common.hxx
     details/spde_method_callback_wrapper.hxx details/spde_property_accessor.hxx
     details/spde_caster_ext.hxx details/spde_caster_numeric.hxx details/spde_caster_string.hxx
-    details/spde_constructor.hxx details/spde_intrusive_object.hxx)
+    details/spde_constructor.hxx details/spde_intrusive_object.hxx spde_enum.hxx details/spde_persistent_wrap.hxx)
 prepend(HEADERS_SPDE "spde" ${HEADERS_SPDE})
 
 set(HEADERS_XNATIVE node_module.hxx node_buffer.hxx node_native_fs.hxx speeder_native.hxx)

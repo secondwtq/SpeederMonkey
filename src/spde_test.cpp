@@ -13,6 +13,7 @@
 #include "xoundation/native/node_module.hxx"
 
 #include "xoundation/spde_helper.hxx"
+#include "xoundation/spde/spde_enum.hxx"
 
 using namespace xoundation;
 
@@ -286,6 +287,12 @@ public:
 
 };
 
+enum EnumTest {
+    Foundation,
+    Pressure,
+    Reliable
+};
+
 template <typename T>
 inline T *passAround(T *src) { return src; }
 
@@ -297,8 +304,7 @@ int main(int argc, const char *argv[]) {
     {
         JSAutoRequest at_req(*srt);
 
-        JS::RootedObject global(*srt);
-        global = JS_NewGlobalObject(*srt, &xoundation::cls_global, nullptr, JS::DontFireOnNewGlobalHook);
+        JS::RootedObject global(*srt, JS_NewGlobalObject(*srt, &xoundation::cls_global, nullptr, JS::DontFireOnNewGlobalHook));
         if (!global) return 1;
 
         JSAutoCompartment at_comp(*srt, global);
@@ -358,6 +364,11 @@ int main(int argc, const char *argv[]) {
         JS_DefineFunction(*srt, global, "passAroundTestIntrusive",
                           spd::function_callback_wrapper<decltype(passAround<TestIntrusiveObject>),
                                   passAround<TestIntrusiveObject>>::callback, 1, attrs_func_default);
+
+        spd::enumeration<EnumTest>().define(*srt, global, "EnumTest")
+                .enumerator<EnumTest::Foundation>("Foundation")
+                .enumerator<EnumTest::Pressure>("Pressure")
+                .enumerator<EnumTest::Reliable>("Reliable");
 
         JS_DefineFunction(*srt, global, "test_funbind_objptr",
                           spd::function_callback_wrapper<int (int, vx_test *), test_funbind_objptr>::callback,
