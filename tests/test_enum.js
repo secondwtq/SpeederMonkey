@@ -21,5 +21,8 @@ var keys = [ 'Foundation', 'Pressure', 'Reliable', 0, 1, 2 ];
 for (var i = 0; i < keys.length; i++) {
     print('EnumTest.', keys[i], '\t\t= ', EnumTest[keys[i]]); }
 
+print(returnsEnum());
+print(passAroundEnum(EnumTest.Pressure));
+
 print();
 print('Test ended.');

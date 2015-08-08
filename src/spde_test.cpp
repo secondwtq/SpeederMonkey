@@ -287,14 +287,20 @@ public:
 
 };
 
+template <typename T>
+inline T *passAround(T *src) { return src; }
+
 enum EnumTest {
     Foundation,
     Pressure,
     Reliable
 };
 
-template <typename T>
-inline T *passAround(T *src) { return src; }
+inline EnumTest returnsEnum() {
+    return EnumTest::Foundation; }
+
+inline EnumTest passAroundEnum(EnumTest src) {
+    return src; }
 
 int main(int argc, const char *argv[]) {
 
@@ -368,7 +374,12 @@ int main(int argc, const char *argv[]) {
         spd::enumeration<EnumTest>().define(*srt, global, "EnumTest")
                 .enumerator<EnumTest::Foundation>("Foundation")
                 .enumerator<EnumTest::Pressure>("Pressure")
-                .enumerator<EnumTest::Reliable>("Reliable");
+                .enumerator(EnumTest::Reliable, "Reliable");
+
+        JS_DefineFunction(*srt, global, "returnsEnum", spd::function_callback_wrapper<decltype(returnsEnum),
+                returnsEnum>::callback, 0, attrs_func_default);
+        JS_DefineFunction(*srt, global, "passAroundEnum", spd::function_callback_wrapper<decltype(passAroundEnum),
+                passAroundEnum>::callback, 1, attrs_func_default);
 
         JS_DefineFunction(*srt, global, "test_funbind_objptr",
                           spd::function_callback_wrapper<int (int, vx_test *), test_funbind_objptr>::callback,

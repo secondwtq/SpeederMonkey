@@ -13,6 +13,7 @@
 #include <string>
 #include <cassert>
 
+// TODO: you know this module is relatively independent
 namespace xoundation {
 namespace spd {
 
@@ -20,7 +21,7 @@ template <typename EnumT>
 class enumeration {
 public:
 
-    enumeration<EnumT> define(JSContext *c, JS::HandleObject global, const std::string& name) {
+    inline enumeration<EnumT> define(JSContext *c, JS::HandleObject global, const std::string& name) {
         assert(!internal().inited());
         this->context = c;
         JS::RootedObject enumobj(c);
@@ -30,8 +31,7 @@ public:
         return *this;
     }
 
-    template <EnumT element>
-    enumeration<EnumT> enumerator(const std::string& name) {
+    inline enumeration<EnumT> enumerator(EnumT element, const std::string& name) {
         JS::RootedObject obj(this->context, *(internal().get()));
 
         JS::RootedValue valnum(this->context);
@@ -42,6 +42,10 @@ public:
         JS_SetElement(this->context, obj, static_cast<int>(element), valstr);
         return *this;
     }
+
+    template <EnumT element>
+    inline enumeration<EnumT> enumerator(const std::string& name) {
+        return this->enumerator(element, name); }
 
 private:
 

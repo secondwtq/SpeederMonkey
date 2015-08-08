@@ -21,6 +21,41 @@
 namespace xoundation {
 namespace spd {
 
+template <typename T, bool is_enum = std::is_enum<T>::value>
+struct micro_caster;
+
+template <typename T>
+struct micro_caster<T, false> {
+
+    inline static JS::Value tojs(JSContext *c, const T& src) {
+        JS::RootedObject proto(c, class_info<T>::instance()->jsc_proto);
+        JSObject *jsobj = JS_NewObject(c, class_info<T>::instance()->jsc_def, proto, JS::NullPtr());
+        lifetime<T> *lt = new lifetime_js<T>(src);
+        JS_SetPrivate(jsobj, reinterpret_cast<void *>(lt));
+        return OBJECT_TO_JSVAL(jsobj);
+    }
+
+    inline static const T& back(JSContext *c, JS::HandleValue src) {
+        lifetime<T> *t = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(src.toObjectOrNull()));
+        return *(t->get());
+    }
+
+};
+
+template <typename T>
+struct micro_caster<T, true> {
+
+    inline static JS::Value tojs(JSContext *c, T src) {
+        JS::RootedValue ret(c);
+        ret.setInt32(static_cast<int>(src));
+        return ret;
+    }
+
+    inline static T back(JSContext *c, JS::HandleValue src) {
+        return static_cast<T>(src.toInt32()); }
+
+};
+
 template<typename T>
 struct caster {
     using actualT = const T&;
@@ -34,19 +69,14 @@ struct caster {
     //  ctor of T called from JS uses a different mechanism, since
     //  it has a JS lifetime by default, see details/spde_constructor.hxx.
     inline static jsT tojs(JSContext *c, actualT src) {
-        JS::RootedObject proto(c, class_info<T>::instance()->jsc_proto);
-        JSObject *jsobj = JS_NewObject(c, class_info<T>::instance()->jsc_def, proto, JS::NullPtr());
-        lifetime<T> *lt = new lifetime_js<T>(src);
-        JS_SetPrivate(jsobj, reinterpret_cast<void *>(lt));
-        return OBJECT_TO_JSVAL(jsobj);
+        return micro_caster<T>().tojs(c, src);
     }
 
     // used when a C++ function called from JS
     //  reads arguments passed from JS
-    inline static backT back(JSContext *c, JS::HandleValue src) {
-        lifetime<T> *t = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(src.toObjectOrNull()));
-        return *(t->get());
-    }
+    inline static auto back(JSContext *c, JS::HandleValue src)
+            -> decltype(micro_caster<T>().back(c, src)) {
+        return micro_caster<T>().back(c, src); }
 
 };
 
