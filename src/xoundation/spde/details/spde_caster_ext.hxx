@@ -8,20 +8,27 @@
 
 #include "../../thirdpt/js_engine.hxx"
 
+#include <cassert>
+
 namespace xoundation {
 namespace spd {
 
 struct context_reference {
 public:
+
+    // we need to expose it for users who need to
+    //  put it somewhere in two-sided API functions
+    //
+    // and well, we don't care too much about
+    //  implicit conversion now
+    context_reference(JSContext *ref) : m_ref(ref) { assert(ref); }
+
     JSContext *context() { return m_ref; }
     operator JSContext *() {
         return context(); }
 
 private:
-    context_reference(JSContext *ref) : m_ref(ref) { }
     JSContext *m_ref;
-
-    friend struct caster<context_reference>;
 };
 
 template<>

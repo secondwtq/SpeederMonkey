@@ -139,6 +139,10 @@ class SpdRuntime {
     operator JSContext *() {
         return context(); }
 
+    // provide support for spd_context_reference
+    operator spd::context_reference() {
+        return { context() }; }
+
 //    JS::HandleObject create_global() {
 //        JS::CompartmentOptions options;
 //        options.setVersion(JSVERSION_LATEST);
