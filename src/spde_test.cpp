@@ -60,7 +60,7 @@ class vx_test {
         return a; }
 
     int test_func_objptr(int a, vx_test *o) {
-        printf("VXX: test_func_objptr: %d ptr: %lx\n", a, o);
+        printf("VXX: test_func_objptr: %d ptr: %p\n", a, o);
         return o->test; }
 
     static int test_static_func(int a) {
@@ -74,6 +74,9 @@ class vx_test {
 
     static std::shared_ptr<vx_test> createShared(int t) {
         return std::make_shared<vx_test>(t); }
+
+    static std::shared_ptr<vx_test> getShared() {
+        return sharedGlobal; }
 };
 
 std::shared_ptr<vx_test> vx_test::sharedGlobal;
@@ -275,7 +278,8 @@ public:
 
 };
 
-class TestIntrusiveObject : public TestIntrusiveObjectForControl, public spd::intrusive_object<TestIntrusiveObject> {
+class TestIntrusiveObject : public TestIntrusiveObjectForControl,
+                            public spd::intrusive_object<TestIntrusiveObject> {
 public:
 
     int getExternalData(spd::context_reference context) {
@@ -324,8 +328,10 @@ int main(int argc, const char *argv[]) {
                     .accessor<vx_test *, &vx_test::get_objref, &vx_test::set_objref>("objref_acc")
                     .method<decltype(&vx_test::test_func), &vx_test::test_func>("test_func")
                     .method<decltype(&vx_test::test_func_objptr), &vx_test::test_func_objptr>("test_func_objptr")
+                    .static_prop<decltype(vx_test::sharedGlobal), &vx_test::sharedGlobal>("sharedGlobal")
                     .static_func<decltype(vx_test::createShared), vx_test::createShared>("createShared")
-                    .static_func<decltype(vx_test::setShared), vx_test::setShared>("setShared");
+                    .static_func<decltype(vx_test::setShared), vx_test::setShared>("setShared")
+                    .static_func<decltype(vx_test::getShared), vx_test::getShared>("getShared");
 
         spd::class_info<parent>::inst_wrapper::set(new spd::class_info<parent>(*srt, "parent"));
         klass<parent>().define<>(global)

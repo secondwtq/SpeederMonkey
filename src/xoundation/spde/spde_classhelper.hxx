@@ -172,7 +172,8 @@ class class_helper {
     inline class_helper<T> static_prop(const std::string& name) {
         info_t *info = info_t::instance();
         JS::RootedObject proto(info->context, info->jsc_proto);
-        JS_DefineProperty(info->context, proto, name.c_str(), JS::UndefinedHandleValue,
+        JS::RootedObject ctor(info->context, JS_GetConstructor(info->context, proto));
+        JS_DefineProperty(info->context, ctor, name.c_str(), JS::UndefinedHandleValue,
                           JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_SHARED | JSPROP_NATIVE_ACCESSORS,
                           reinterpret_cast<JSPropertyOp>(default_getter_static<PropT, AttrT>),
                           reinterpret_cast<JSStrictPropertyOp>(default_setter_static<PropT, AttrT>));
@@ -184,7 +185,8 @@ class class_helper {
     inline class_helper<T> static_func(const std::string& name) {
         info_t *info = info_t::instance();
         JS::RootedObject proto(info->context, info->jsc_proto);
-        function_callback_wrapper<ProtoT, func>::register_func(info->context, proto, name.c_str());
+        JS::RootedObject ctor(info->context, JS_GetConstructor(info->context, proto));
+        function_callback_wrapper<ProtoT, func>::register_func(info->context, ctor, name.c_str());
 
         return *this;
     }
@@ -193,7 +195,8 @@ class class_helper {
     inline class_helper<T> raw_static(const std::string& name) {
         info_t *info = info_t::instance();
         JS::RootedObject proto(info->context, info->jsc_proto);
-        JS_DefineFunction(info->context, proto, name.c_str(), func, 0,
+        JS::RootedObject ctor(info->context, JS_GetConstructor(info->context, proto));
+        JS_DefineFunction(info->context, ctor, name.c_str(), func, 0,
                           JSPROP_PERMANENT | JSPROP_ENUMERATE | JSFUN_STUB_GSOPS);
         return *this;
     }
@@ -202,7 +205,8 @@ class class_helper {
     inline class_helper<T> raw_method(const std::string& name, size_t nargs = 0) {
         info_t *info = info_t::instance();
         JS::RootedObject proto(info->context, info->jsc_proto);
-        JS_DefineFunction(info->context, proto, name.c_str(), raw_method_callback<func>, nargs,
+        JS::RootedObject ctor(info->context, JS_GetConstructor(info->context, proto));
+        JS_DefineFunction(info->context, ctor, name.c_str(), raw_method_callback<func>, nargs,
                         JSPROP_PERMANENT | JSPROP_ENUMERATE | JSFUN_STUB_GSOPS);
 
         return *this;

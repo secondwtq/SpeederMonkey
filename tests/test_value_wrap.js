@@ -6,7 +6,7 @@ print('Test started.');
 print('Test name: test_value_wrap');
 
 print('Creating TestClassValueWrap variable a');
-var a = TestClassValueWrap.prototype.createShared();
+var a = TestClassValueWrap.createShared();
 
 print('Setting a.data to string \'Hello PersistentRooted\', print and GC');
 a.data = 'Hello PersistentRooted';

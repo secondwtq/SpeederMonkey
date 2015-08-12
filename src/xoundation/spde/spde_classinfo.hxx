@@ -22,10 +22,15 @@ static JSClass default_class_def = {
         nullptr, nullptr, nullptr, nullptr, nullptr,
 };
 
+class class_info_base {
+public:
+    virtual ~class_info_base() { }
+};
+
 }
 
 template<typename T>
-class class_info {
+class class_info : public details::class_info_base {
 
     public:
 
@@ -54,23 +59,13 @@ class class_info {
         char *new_name = (char *) malloc((strlen(name) + 1) * sizeof(char));
         strcpy(new_name, name);
         new_name[strlen(new_name)] = '\0';
+
         jsc_def->name = new_name;
-
-        /*
-        char *new_protoname = nullptr;
-        if (!protoname) {
-            new_protoname = (char *) malloc((strlen(name) + strlen("Proto") + 1) * sizeof(char));
-            strcpy(new_protoname, new_name);
-            strcat(new_protoname, "Proto");
-        } else {
-            new_protoname = (char *) malloc((strlen(protoname) + 1) * sizeof(char));
-            strcpy(new_protoname, protoname);
-        }
-        new_protoname[strlen(new_protoname)] = '\0';
-        */
-
         jsc_def_proto->name = new_name; // new_protoname;
     }
+
+    // TODO: destruction of class_info
+    ~class_info() { }
 
     JSContext *context = nullptr;
     // TODO: replace with JS::PersistentRooted
@@ -81,6 +76,7 @@ class class_info {
 private:
 
     struct classdef_cloner {
+
         classdef_cloner(JSClass *src) :
                 m_ref(reinterpret_cast<JSClass *>(malloc(sizeof(JSClass )))) {
             assert(src);
