@@ -8,6 +8,8 @@ function test1() {
     var p_inside = new parent();
 }
 
+test1();
+
 collectgarbage();
 
 p_global.func();

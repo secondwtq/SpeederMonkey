@@ -275,6 +275,8 @@ class TestIntrusiveObjectForControl {
 public:
 
     int internalData = 0;
+    virtual ~TestIntrusiveObjectForControl() {
+        printf("Destructing TestIntrusiveObjectForControl %p ...\n", this); }
 
 };
 
@@ -288,6 +290,9 @@ public:
         JS_GetProperty(context, intr, "externalData", &ret);
         return ret.toInt32();
     }
+
+    virtual ~TestIntrusiveObject() {
+        printf("Destructing TestIntrusiveObject %p ...\n", this); }
 
 };
 
@@ -309,16 +314,13 @@ inline EnumTest passAroundEnum(EnumTest src) {
 int main(int argc, const char *argv[]) {
 
     srt = new SpdRuntime;
-    JS_SetGCCallback(srt->runtime(), spd_gc_callback, NULL);
+    srt->set_gc_callback(spd_gc_callback);
 
     {
         JSAutoRequest at_req(*srt);
-
-        JS::RootedObject global(*srt, JS_NewGlobalObject(*srt, &xoundation::cls_global, nullptr, JS::DontFireOnNewGlobalHook));
-        if (!global) return 1;
-
+        JS::RootedObject global(*srt, srt->create_global());
         JSAutoCompartment at_comp(*srt, global);
-        if (!JS_InitStandardClasses(*srt, global)) return 1;
+
         JS_DefineFunction(*srt, global, "print", xoundation::js_print, 5, attrs_func_default);
 
         spd::class_info<vx_test>::inst_wrapper::set(new spd::class_info<vx_test>(*srt, "vx_test"));

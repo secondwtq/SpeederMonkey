@@ -27,7 +27,7 @@ function(prepend var prefix)
 endfunction(prepend)
 
 set(HEADERS_SPDE spde_caster.hxx spde_heroes.hxx spde_vivalavida.hxx spde_functionbind.hxx
-    spde_classinfo.hxx spde_classhelper.hxx spde_test_common.hxx
+    spde_classinfo.hxx spde_classhelper.hxx spde_test_common.hxx spde_common.hxx
     details/spde_method_callback_wrapper.hxx details/spde_property_accessor.hxx
     details/spde_caster_ext.hxx details/spde_caster_numeric.hxx details/spde_caster_string.hxx
     details/spde_constructor.hxx details/spde_intrusive_object.hxx spde_enum.hxx details/spde_persistent_wrap.hxx)

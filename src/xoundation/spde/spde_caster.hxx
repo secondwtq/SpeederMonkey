@@ -80,7 +80,7 @@ struct caster {
 
 };
 
-template <typename T, bool is_intrusive = std::is_base_of<intrusive_object<T>, T>::value>
+template <typename T, bool is_intrusive = std::is_base_of<intrusive_object_base, T>::value>
 struct micro_caster_ptr;
 
 template <typename T>
@@ -138,7 +138,7 @@ struct caster<T *> {
 template<typename T>
 struct caster<T&> {
 
-    using actualT = const T&;
+    using actualT = T&;
     using backT = T&;
     using jsT = JS::Value;
 

@@ -1,21 +1,18 @@
 //
-// Created by secondwtq <lovejay-lovemusic@outlook.com> 2015/05/29.
-// Copyright (c) 2015 SCU ISDC All rights reserved.
-//
-// This file is part of ISDCNext.
-//
-// We have always treaded the borderland.
+// Created by secondwtq 15-5-29.
+// Copyright (c) 2015 The Xoundation Project All rights reserved.
 //
 
 #ifndef MOZJS_HELPER_HXX
 #define MOZJS_HELPER_HXX
 
 #include "./thirdpt/js_engine.hxx"
+#include "spde/spde_classhelper.hxx"
 
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "spde/spde_classhelper.hxx"
+#include <functional>
 
 namespace xoundation {
 
@@ -130,9 +127,6 @@ class SpdRuntime {
     void use_strict() {
         JS::ContextOptionsRef(m_context).setStrictMode(1); }
 
-    void set_error_reporter(void (*func)(JSContext *, const char *, JSErrorReport *)) {
-        JS_SetErrorReporter(m_context, func); }
-
     JSContext *context() { return m_context; }
     JSRuntime *runtime() { return m_runtime; }
 
@@ -143,29 +137,50 @@ class SpdRuntime {
     operator spd::context_reference() {
         return { context() }; }
 
-//    JS::HandleObject create_global() {
-//        JS::CompartmentOptions options;
-//        options.setVersion(JSVERSION_LATEST);
-//
-//        JS::RootedObject global(context(), JS_NewGlobalObject(context(), &cls_global,
-//                                      nullptr, JS::DontFireOnNewGlobalHook, options));
-//        if (!global) return JS::NullPtr();
-//        JSAutoCompartment cp(context(), global);
-//        if (!JS_InitStandardClasses(context(), global)) return JS::NullPtr();
-//        // JS_FireOnNewGlobalObject(context(), global);
+    JS::HandleObject create_global() {
+        JS::CompartmentOptions options;
+        options.setVersion(JSVERSION_LATEST);
+
+        JSAutoRequest at_req(context());
+        JS::RootedObject global(context(), JS_NewGlobalObject(context(), &cls_global,
+                                      nullptr, JS::DontFireOnNewGlobalHook, options));
+        if (!global) {
+            return JS::NullPtr(); }
+
+        JSAutoCompartment cp(context(), global);
+        if (!JS_InitStandardClasses(context(), global)) {
+            return JS::NullPtr(); }
+
+//        JS_FireOnNewGlobalObject(context(), global);
 //        JS::MutableHandleObject h(&global);
-////        if (!JS_WrapObject(context(), h)) {
-////            fprintf(stderr, "SpdRuntime::create_global - wrapping failed!\n");
-////            return JS::NullPtr();
-////        }
-//
-//        return global;
-//    }
+//        if (!JS_WrapObject(context(), h)) {
+//            fprintf(stderr, "SpdRuntime::create_global - wrapping failed!\n");
+//            return JS::NullPtr();
+//        }
+
+        return global;
+    }
+
+    void set_gc_callback(std::function<void (JSRuntime *, JSGCStatus)> cb) {
+        this->m_gccb = cb;
+        JS_SetGCCallback(runtime(), wrapper_gccb, &m_gccb);
+    }
+
+    void set_error_reporter(void (*func)(JSContext *, const char *, JSErrorReport *)) {
+        JS_SetErrorReporter(context(), func); }
 
     private:
 
     JSRuntime *m_runtime;
     JSContext *m_context;
+
+    std::function<void (JSRuntime *, JSGCStatus)> m_gccb;
+
+    static void wrapper_gccb(JSRuntime *jsr, JSGCStatus status, void *data) {
+        std::function<void (JSRuntime *, JSGCStatus)> *func =
+                reinterpret_cast<std::function<void (JSRuntime *, JSGCStatus)> *>(data);
+        return (*func)(jsr, status);
+    }
 
 };
 

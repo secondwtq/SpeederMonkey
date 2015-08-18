@@ -18,7 +18,7 @@ var b = vx_test.createShared(1996);
 print(b);
 print('Setting sharedGlobal to b ...');
 vx_test.sharedGlobal = b;
-print('Setting a to undefined and GC ...');
+print('Setting b to undefined and GC ...');
 b = undefined;
 collectgarbage();
 print();

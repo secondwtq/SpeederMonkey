@@ -217,11 +217,9 @@ void register_interface_fs(JSContext *context, JS::HandleObject parent) {
                                                       JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_READONLY));
 
     spd::class_info<stats>::inst_wrapper::set(new spd::class_info<stats>(context, "Stats"));
-    spd::class_helper<stats>().define<>(parent);
-    spd::class_helper<stats>::method_callback_wrapper<decltype(&stats::is_file),
-                                                    &stats::is_file>::register_as("isFile");
-    spd::class_helper<stats>::method_callback_wrapper<decltype(&stats::is_directory),
-                                                    &stats::is_directory>::register_as("isDirectory");
+    spd::class_helper<stats>().define<>(parent)
+            .method<decltype(&stats::is_file), &stats::is_file>("isFile")
+            .method<decltype(&stats::is_directory), &stats::is_directory>("isDirectory");
 
     JS_DefineFunction(context, node_fs, "existsSync", spd::function_callback_wrapper<decltype
                             (fs_exists_sync), fs_exists_sync>::callback, 1, attrs_func_default);

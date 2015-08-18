@@ -75,6 +75,53 @@ struct caster<size_t> {
 
 };
 
+template<>
+struct caster<float> {
+
+    using actualT = float;
+    using backT = float;
+    using jsT = JS::Value;
+
+    inline static jsT tojs(JSContext *c, actualT src) {
+        return DOUBLE_TO_JSVAL(static_cast<double>(src)); }
+
+    inline static backT back(JSContext *, JS::HandleValue src) {
+        // toNumber(), or toDouble() ?
+        return src.toNumber(); }
+
+};
+
+template<>
+struct caster<long long> {
+
+    using actualT = long long;
+    using backT = long long;
+    using jsT = JS::Value;
+
+    inline static jsT tojs(JSContext *c, actualT src) {
+        // is it proper to use double for it?
+        return DOUBLE_TO_JSVAL(static_cast<double>(src)); }
+
+    inline static backT back(JSContext *, JS::HandleValue src) {
+        return static_cast<long long>(src.toNumber()); }
+
+};
+
+template<>
+struct caster<unsigned short> {
+
+    using actualT = unsigned short;
+    using backT = unsigned short;
+    using jsT = JS::Value;
+
+    inline static jsT tojs(JSContext *c, actualT src) {
+        return UINT_TO_JSVAL(static_cast<unsigned int>(src)); }
+
+    inline static backT back(JSContext *, JS::HandleValue src) {
+        return static_cast<unsigned short>(src.toInt32()); }
+
+};
+
 }
 }
 

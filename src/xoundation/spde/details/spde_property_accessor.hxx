@@ -17,10 +17,28 @@ namespace spd {
 namespace details {
 
 template <typename T, typename PropT>
+struct static_accessor {
+
+    template<PropT *AttrT>
+    inline static JS_NATIVEFUNC bool default_getter(JSContext *context, unsigned int argc, JS::Value *vp) {
+        JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+        args.rval().set(caster<PropT>::tojs(context, *AttrT));
+        return true;
+    }
+
+    template<PropT *AttrT>
+    inline static JS_NATIVEFUNC bool default_setter(JSContext *context, unsigned argc, JS::Value *vp) {
+        JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+        *AttrT = caster<PropT>::back(context, args[0]);
+        return true;
+    }
+};
+
+template <typename T, typename PropT>
 struct property_accessor {
 
     template<PropT T::*AttrT>
-    inline static bool default_getter(JSContext *context, unsigned int argc, JS::Value *vp) {
+    inline static JS_NATIVEFUNC bool default_getter(JSContext *context, unsigned int argc, JS::Value *vp) {
         JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
         T *raw = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
         args.rval().set(caster<PropT>::tojs(context, raw->*AttrT));
@@ -28,7 +46,7 @@ struct property_accessor {
     }
 
     template<PropT T::*AttrT>
-    inline static bool default_setter(JSContext *context, unsigned int argc, JS::Value *vp) {
+    inline static JS_NATIVEFUNC bool default_setter(JSContext *context, unsigned int argc, JS::Value *vp) {
         JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
         T *raw = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
         raw->*AttrT = caster<PropT>::back(context, args[0]);
@@ -41,7 +59,7 @@ template <typename T, typename PropT>
 struct property_accessor_custom_base {
 
     template<JS::Value (*func)(JSContext *, unsigned int, JS::Value *, JS::CallArgs&, T *, bool *)>
-    inline static bool getter(JSContext *context, unsigned int argc, JS::Value *vp) {
+    inline static JS_NATIVEFUNC bool getter(JSContext *context, unsigned int argc, JS::Value *vp) {
         JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
         T *raw = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
         bool succeeded = true;
@@ -50,7 +68,7 @@ struct property_accessor_custom_base {
     }
 
     template<void (*func)(JSContext *, unsigned int, JS::Value *, JS::CallArgs&, T *, JS::HandleValue, bool *)>
-    inline static bool setter(JSContext *context, unsigned int argc, JS::Value *vp) {
+    inline static JS_NATIVEFUNC bool setter(JSContext *context, unsigned int argc, JS::Value *vp) {
         JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
         T *raw = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
         bool succeeded = true;
@@ -66,18 +84,26 @@ struct property_accessor_general {
     inline static JS::Value _getter(JSContext *ctx, unsigned int, JS::Value *, JS::CallArgs&, T *self, bool *) {
         return caster<PropT>::tojs(ctx, (self->*func)()); }
 
-    template<void (T::*func)(PropT)>
+    template<PropT (T::*func)() const>
+    inline static JS::Value _getter(JSContext *ctx, unsigned int, JS::Value *, JS::CallArgs&, T *self, bool *) {
+        return caster<PropT>::tojs(ctx, (self->*func)()); }
+
+    template<typename ReturnT, ReturnT (T::*func)(PropT)>
     inline static void _setter(JSContext *ctx, unsigned int, JS::Value *,
-                               JS::CallArgs&, T *self, JS::HandleValue value, bool *) {
-        return (self->*func)(caster<PropT>::back(ctx, value)); }
+            JS::CallArgs&, T *self, JS::HandleValue value, bool *) {
+        (self->*func)(caster<PropT>::back(ctx, value)); }
 
     template<PropT (T::*func)()>
     inline static bool getter(JSContext *context, unsigned int argc, JS::Value *vp) {
         return property_accessor_custom_base<T, PropT>::template getter<_getter<func>>(context, argc, vp); }
 
-    template<void (T::*func)(PropT)>
+    template<PropT (T::*func)() const>
+    inline static bool getter(JSContext *context, unsigned int argc, JS::Value *vp) {
+        return property_accessor_custom_base<T, PropT>::template getter<_getter<func>>(context, argc, vp); }
+
+    template<typename ReturnT, ReturnT (T::*func)(PropT)>
     inline static bool setter(JSContext *context, unsigned int argc, JS::Value *vp) {
-        return property_accessor_custom_base<T, PropT>::template setter<_setter<func>>(context, argc, vp); }
+        return property_accessor_custom_base<T, PropT>::template setter<_setter<ReturnT, func>>(context, argc, vp); }
 };
 
 }

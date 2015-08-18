@@ -30,6 +30,16 @@ print('Then print it out:');
 print('Intrusive - ', p_intrusive.internalData, ' ', p_intrusive.externalData, ' ', p_intrusive);
 print('Intrusive.externalData (with builtin function) - ', intrusive.getExternalData());
 print('Non-intrusive - ', p_non_intrusive.internalData, ' ', p_non_intrusive.externalData, ' ', p_non_intrusive);
+print();
+
+print('Test for memory issues.');
+print('Create an instrusive object intr, and a non-instrusive object ntr.');
+var intr = new TestIntrusiveObject();
+var non_intr = new TestIntrusiveObjectForControl();
+print('Set them to undefined and GC.');
+intr = undefined;
+non_intr = undefined;
+collectgarbage();
 
 print();
 print('Test end.');

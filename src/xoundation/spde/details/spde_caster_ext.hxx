@@ -40,7 +40,7 @@ struct caster<context_reference> {
         return { c }; }
 };
 
-template<>
+template <>
 struct caster<JS::PersistentRootedValue> {
 
     using actualT = JS::PersistentRootedValue;
@@ -52,6 +52,21 @@ struct caster<JS::PersistentRootedValue> {
 
     inline static backT back(JSContext *c, JS::HandleValue src) {
         return { c, src }; }
+
+};
+
+template<>
+struct caster<JS::PersistentRootedObject> {
+
+    using actualT = JS::PersistentRootedObject;
+    using backT = JS::PersistentRootedObject;
+    using jsT = JS::Value;
+
+    inline static jsT tojs(JSContext *c, actualT src) {
+        return OBJECT_TO_JSVAL(src.get()); }
+
+    inline static backT back(JSContext *c, JS::HandleValue src) {
+        return { c, src.toObjectOrNull() }; }
 
 };
 

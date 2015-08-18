@@ -20,39 +20,41 @@ struct intrusive_object;
 namespace details {
 template <typename T>
 persistent_rooted_wrap<JSObject *>&
-        get_instrusive_wrapper(intrusive_object<T> *src);
+        get_instrusive_wrapper(T *src);
 }
 
-template <typename T>
-struct intrusive_object {
+struct intrusive_object_base {
 private:
 
     details::persistent_rooted_wrap<JSObject *> unique_obj;
 
-    template <typename T_>
+    template <typename T>
     friend details::persistent_rooted_wrap<JSObject *> &
-            details::get_instrusive_wrapper(intrusive_object<T_> *);
-
+            details::get_instrusive_wrapper(T *);
 };
+
+template <typename T>
+struct intrusive_object : public intrusive_object_base { };
 
 namespace details {
 
 template <typename T>
 inline details::persistent_rooted_wrap<JSObject *> &
-        get_instrusive_wrapper(intrusive_object<T> *src) {
+        get_instrusive_wrapper(T *src) {
     return src->unique_obj; }
 
 }
 
 // what do you think of the type of it's return value?
 template <typename T>
-JS::HandleObject get_intrusive_object(intrusive_object<T> *src) {
+inline JS::HandleObject get_intrusive_object(T *src) {
     details::persistent_rooted_wrap<JSObject *>& wrap = details::get_instrusive_wrapper(src);
     assert(wrap.inited());
-    return *(wrap.get()); }
+    return *(wrap.get());
+}
 
 template <typename T>
-JS::HandleObject get_intrusive_object_with_init(JSContext *c, intrusive_object<T> *src) {
+inline JS::HandleObject get_intrusive_object_with_init(JSContext *c, T *src) {
     details::persistent_rooted_wrap<JSObject *>& wrap = details::get_instrusive_wrapper(src);
     if (!wrap.inited()) {
         // is it a bug? ->
