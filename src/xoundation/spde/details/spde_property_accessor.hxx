@@ -91,7 +91,7 @@ struct property_accessor_general {
     template<typename ReturnT, ReturnT (T::*func)(PropT)>
     inline static void _setter(JSContext *ctx, unsigned int, JS::Value *,
             JS::CallArgs&, T *self, JS::HandleValue value, bool *) {
-        (self->*func)(caster<PropT>::back(ctx, value)); }
+        (self->*func)(caster<const PropT&>::back(ctx, value)); }
 
     template<PropT (T::*func)()>
     inline static bool getter(JSContext *context, unsigned int argc, JS::Value *vp) {
@@ -104,6 +104,7 @@ struct property_accessor_general {
     template<typename ReturnT, ReturnT (T::*func)(PropT)>
     inline static bool setter(JSContext *context, unsigned int argc, JS::Value *vp) {
         return property_accessor_custom_base<T, PropT>::template setter<_setter<ReturnT, func>>(context, argc, vp); }
+
 };
 
 }

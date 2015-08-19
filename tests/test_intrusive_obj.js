@@ -9,6 +9,7 @@ print();
 print('Create an intrusive object and a non-intrusive object.');
 var intrusive = new TestIntrusiveObject();
 var non_intrusive = new TestIntrusiveObjectForControl();
+print(intrusive.__proto__, ' ', intrusive.prototype, ' ', intrusive.constructor);
 print('Intrusive.externalData (with builtin function) - ', intrusive.getExternalData());
 
 print('Set the internal/external data of the intrusive to (1, 2), and non_intrusive to (3, 4).');

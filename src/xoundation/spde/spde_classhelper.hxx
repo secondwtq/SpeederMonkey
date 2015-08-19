@@ -63,6 +63,28 @@ class class_helper {
         return *this;
     }
 
+    template<LifetimeType lt = UseJSLifetime,
+            template <typename ...> class packtype, typename ... Args>
+    inline SPD_PUBLICAPI class_helper<T> attach(const std::string& name, packtype<Args ...> p) {
+        info_t *info = info_t::instance();
+        JS::RootedObject proto(info->context, info->jsc_proto);
+        JS::RootedObject ctor(info->context, JS_GetConstructor(info->context, proto));
+        JS_DefineFunction(info->context, ctor, name.c_str(),
+                details::ctor_callback<T, Args ...>::template native_attach_new<lt>,
+                static_cast<unsigned int>(sizeof ... (Args)),
+                JSPROP_PERMANENT | JSPROP_ENUMERATE | JSFUN_STUB_GSOPS);
+        return *this;
+    };
+
+    inline SPD_PUBLICAPI class_helper<T> reproto(const std::string& name) {
+        info_t *info = info_t::instance();
+        JS::RootedObject proto(info->context, info->jsc_proto);
+        JS::RootedObject ctor(info->context, JS_GetConstructor(info->context, proto));
+        JS_DefineFunction(info->context, ctor, name.c_str(), details::native_reproto<T>,
+                1, JSPROP_PERMANENT | JSPROP_ENUMERATE | JSFUN_STUB_GSOPS);
+        return *this;
+    };
+
     // TODO: readonly feature
     template<typename PropT, PropT T::*AttrT>
     inline SPD_PUBLICAPI class_helper<T> property(const std::string& name) {
@@ -92,6 +114,19 @@ class class_helper {
         return *this;
     }
 
+    template<typename PropT, PropT (T::*Getter)() const>
+    inline SPD_PUBLICAPI class_helper<T> accessor(const std::string& name, bool readonly = false) {
+        info_t *info = info_t::instance();
+
+        JS::RootedObject proto(info->context, info->jsc_proto);
+        JS_DefineProperty(info->context, proto, name.c_str(), JS::UndefinedHandleValue,
+                JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_SHARED | JSPROP_NATIVE_ACCESSORS | JSPROP_READONLY,
+                reinterpret_cast<JSPropertyOp>
+                (details::property_accessor_general<T, PropT>::template getter<Getter>), nullptr);
+
+        return *this;
+    }
+
     // for now if you forced 'nullptr' on these functions
     //  it would lead to a crash of calling NULL
     //  when the corresponding access takes place
@@ -109,7 +144,7 @@ class class_helper {
             reinterpret_cast<JSPropertyOp>
             (details::property_accessor_general<T, PropT>::template getter<Getter>),
             reinterpret_cast<JSStrictPropertyOp>
-            (details::property_accessor_general<T, PropT>::template setter<Setter>));
+            (details::property_accessor_general<T, PropT>::template setter<void, Setter>));
 
         return *this;
     }

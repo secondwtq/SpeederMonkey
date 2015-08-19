@@ -26,13 +26,14 @@ template<typename T, typename ... Args>
 struct ctor_internal {
     using info_t = class_info<T>;
 
+    // 150819: fixed duplicated copying in argument forwarding of ctor
     template<size_t ... N>
-    inline static T *callback(std::tuple<Args ...> args, indices<N ...>) {
+    inline static T *callback(const std::tuple<typename caster<Args>::backT ...>& args, indices<N ...>) {
         return new T(std::get<N>(args) ...); }
 
     // for placement new
     template<size_t ... N>
-    inline static T *callback(std::tuple<Args ...> args, indices<N ...>, void *ptr) {
+    inline static T *callback(const std::tuple<typename caster<Args>::backT ...>& args, indices<N ...>, void *ptr) {
         return new (ptr) T(std::get<N>(args) ...); }
 };
 
@@ -51,11 +52,11 @@ struct ctor_addon_intrusive<T, true> {
 // template template parameter ...
 template <typename T, template <typename> class LifetimeT, typename ... Args>
 struct lifetime_creation {
-    inline lifetime<T> *operator () (std::tuple<typename caster<Args>::backT ...> args); };
+    inline lifetime<T> *operator () (const std::tuple<typename caster<Args>::backT ...>& args); };
 
 template <typename T, typename ... Args>
 struct lifetime_creation<T, lifetime_js, Args ...> {
-    inline lifetime<T> *operator () (std::tuple<typename caster<Args>::backT ...> args) {
+    inline lifetime<T> *operator () (const std::tuple<typename caster<Args>::backT ...>& args) {
         lifetime<T> *t = new lifetime_js<T>(LIFETIME_PLACEMENT_CONSTRUCT);
         ctor_internal<T, Args ...>::callback(args, typename indices_builder
                 <sizeof ... (Args)>::type(), t->get());
@@ -65,19 +66,43 @@ struct lifetime_creation<T, lifetime_js, Args ...> {
 
 template <typename T, typename ... Args>
 struct lifetime_creation<T, lifetime_cxx, Args ...> {
-    inline lifetime<T> *operator () (std::tuple<typename caster<Args>::backT ...> args) {
+    inline lifetime<T> *operator () (const std::tuple<typename caster<Args>::backT ...>& args) {
         T *inside = ctor_internal<T, Args ...>::callback(args, typename indices_builder
                 <sizeof ... (Args)>::type());
         return new lifetime_cxx<T>(inside);
     }
 };
 
-template <typename T, bool use_js_lifetime, typename ... Args>
-struct lifetime_booltype {
-    typedef lifetime_creation<T, lifetime_js, Args ...> type; };
 template <typename T, typename ... Args>
-struct lifetime_booltype<T, false, Args ...> {
+struct lifetime_creation<T, lifetime_shared_std, Args ...> {
+    inline lifetime<T> *operator () (std::tuple<typename caster<Args>::backT ...> args) {
+        std::shared_ptr<T> inside(ctor_internal<T, Args ...>::callback(args, typename indices_builder
+                <sizeof ... (Args)>::type()));
+        return new lifetime_shared_std<T>(inside);
+    }
+};
+
+template <typename T, LifetimeType lt, typename ... Args>
+struct lifetime_enumtype {
+    typedef lifetime_creation<T, lifetime_js, Args ...> type; };
+
+template <typename T, typename ... Args>
+struct lifetime_enumtype<T, UseCXXLifetime, Args ...> {
     typedef lifetime_creation<T, lifetime_cxx, Args ...> type; };
+
+template <typename T, typename ... Args>
+struct lifetime_enumtype<T, UseSharedLifetime, Args ...> {
+    typedef lifetime_creation<T, lifetime_shared_std, Args ...> type; };
+
+template <typename T>
+inline static bool native_reproto(JSContext *c, unsigned int argc, JS::Value *vp) {
+    JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+    JS::RootedObject self(c, JS_THIS_OBJECT(c, vp));
+    JS::RootedObject proto(c, args[0].toObjectOrNull());
+
+    args.rval().setObject(*JS_NewObjectWithGivenProto(c, class_info<T>::instance()->jsc_def, proto, JS::NullPtr()));
+    return true;
+}
 
 template <typename T, typename ... Args>
 struct ctor_callback {
@@ -88,19 +113,33 @@ struct ctor_callback {
     inline static bool callback_invalid(JSContext *context, unsigned int argc, JS::Value *vp) {
         return true; }
 
-    template <bool use_js_lifetime>
-    using lifetime_booltype = typename details::lifetime_booltype<T, use_js_lifetime, Args ...>::type;
-    template <bool jslifetime> // removed default parameter since it to be used internally
-    inline static bool callback(JSContext *c, unsigned int argc, JS::Value *vp) {
-        JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+    template <LifetimeType lt>
+    using lifetime_creation = typename details::lifetime_enumtype<T, lt, Args ...>::type;
+    template <LifetimeType lt>
+    inline static void attach_new_native(JSContext *c, JS::HandleObject self, JS::CallArgs args) {
         auto args_tuple = details::construct_args<typename caster<Args>::backT ...>(c, args);
+        lifetime<T> *t = lifetime_creation<lt>()(args_tuple);
+        JS_SetPrivate(self, reinterpret_cast<void *>(t));
+        ctor_addon_intrusive<T>::callback(c, t->get(), self);
+    }
 
-        lifetime<T> *t = lifetime_booltype<jslifetime>()(args_tuple);
+    template <LifetimeType lt>
+    inline static bool native_attach_new(JSContext *c, unsigned int argc, JS::Value *vp) {
+        JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+        JS::RootedObject self(c, JS_THIS_OBJECT(c, vp));
 
+        attach_new_native<lt>(c, self, args);
+        args.rval().set(OBJECT_TO_JSVAL(self));
+        return true;
+    }
+
+    template <LifetimeType lt> // removed default parameter since it's to be used internally
+    inline static bool callback(JSContext *c, unsigned int argc, JS::Value *vp) {
         JS::RootedObject proto(c, class_info<T>::instance()->jsc_proto);
         JS::RootedObject jsobj(c, JS_NewObject(c, class_info<T>::instance()->jsc_def, proto, JS::NullPtr()));
-        JS_SetPrivate(jsobj, reinterpret_cast<void *>(t));
-        ctor_addon_intrusive<T>::callback(c, t->get(), jsobj);
+
+        JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+        attach_new_native<lt>(c, jsobj, args);
 
         args.rval().set(OBJECT_TO_JSVAL(jsobj));
         return true;
@@ -115,7 +154,7 @@ struct class_def {
 
         info->jsc_def->finalize = callbacks::dtor_callback;
 
-        JSNative ctor_callback = callbacks::template callback<lt == UseJSLifetime>;
+        JSNative ctor_callback = callbacks::template callback<lt>;
         if (use_invalid) {
             ctor_callback = callbacks::callback_invalid; }
         info->jsc_proto = JS_InitClass(info->context, global, parent_proto, info->jsc_def_proto,

@@ -311,6 +311,34 @@ inline EnumTest returnsEnum() {
 inline EnumTest passAroundEnum(EnumTest src) {
     return src; }
 
+class CopyTestCopied {
+public:
+    CopyTestCopied() {
+        printf("CopyTestCopied constructed. %p\n", this); }
+    CopyTestCopied(const CopyTestCopied&) {
+        printf("CopyTestCopied copied. %p\n", this); }
+    CopyTestCopied(CopyTestCopied&&) {
+        printf("CopyTestCopied moved. %p\n", this); }
+    ~CopyTestCopied() {
+        printf("CopyTestCopied destructed. %p\n", this); }
+};
+
+class CopyTest {
+public:
+    CopyTest(CopyTestCopied arg) {
+        printf("CopyTest constructed. this: %p, CopyTestCopied: %p\n", this, &arg); }
+    CopyTest(const CopyTest&) {
+        printf("CopyTest copied. %p\n", this); }
+    CopyTest(CopyTest&&) {
+        printf("CopyTest moved. %p\n", this); }
+
+    void testCopy(CopyTestCopied arg) {
+        printf("testCopy called. this: %p, CopyTestCopied: %p\n", this, &arg); }
+
+    ~CopyTest() {
+        printf("CopyTest destructed. %p\n", this); }
+};
+
 int main(int argc, const char *argv[]) {
 
     srt = new SpdRuntime;
@@ -347,7 +375,7 @@ int main(int argc, const char *argv[]) {
                     .static_func<decltype(parent::getst), parent::getst>("getst");
 
         spd::class_info<child>::inst_wrapper::set(new spd::class_info<child>(*srt, "child"));
-        klass<child>().inherits<parent>(global)
+        klass<child>().inherits<parent>(global, spd::argpack<>())
                     .method<decltype(&child::func), &child::func>("func")
                     .method<decltype(&child::func_child), &child::func_child>("func_child")
                     .property<int, &child::b>("b");
@@ -368,7 +396,7 @@ int main(int argc, const char *argv[]) {
 
         spd::class_info<TestIntrusiveObject>::inst_wrapper::set(
                 new spd::class_info<TestIntrusiveObject>(*srt, "TestIntrusiveObject"));
-        klass<TestIntrusiveObject>().inherits<TestIntrusiveObjectForControl>(global)
+        klass<TestIntrusiveObject>().inherits<TestIntrusiveObjectForControl>(global, spd::argpack<>())
                 .method<decltype(&TestIntrusiveObject::getExternalData), &TestIntrusiveObject::getExternalData>
                         ("getExternalData");
 
@@ -383,6 +411,15 @@ int main(int argc, const char *argv[]) {
                 .enumerator<EnumTest::Foundation>("Foundation")
                 .enumerator<EnumTest::Pressure>("Pressure")
                 .enumerator(EnumTest::Reliable, "Reliable");
+
+        spd::class_info<CopyTest>::inst_wrapper::set(new spd::class_info<CopyTest>(*srt, "CopyTest"));
+        klass<CopyTest>().define(global, spd::argpack<CopyTestCopied>())
+                .attach("attachNew", spd::argpack<CopyTestCopied>())
+                .reproto("reproto")
+                .method<decltype(&CopyTest::testCopy), &CopyTest::testCopy>("testCopy");
+
+        spd::class_info<CopyTestCopied>::inst_wrapper::set(new spd::class_info<CopyTestCopied>(*srt, "CopyTestCopied"));
+        klass<CopyTestCopied>().define(global);
 
         JS_DefineFunction(*srt, global, "returnsEnum", spd::function_callback_wrapper<decltype(returnsEnum),
                 returnsEnum>::callback, 0, attrs_func_default);

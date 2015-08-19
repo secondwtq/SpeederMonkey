@@ -70,6 +70,22 @@ struct caster<JS::PersistentRootedObject> {
 
 };
 
+template<>
+struct caster<JS::HandleObject> {
+
+    using actualT = JS::HandleObject;
+    using backT = JS::HandleObject;
+    using jsT = JS::Value;
+
+    inline static jsT tojs(JSContext *c, actualT src) {
+        return OBJECT_TO_JSVAL(src); }
+
+    inline static backT back(JSContext *c, JS::HandleValue src) {
+        JS::RootedObject obj(c, src.toObjectOrNull());
+        return obj; }
+
+};
+
 }
 }
 

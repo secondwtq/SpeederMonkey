@@ -14,7 +14,8 @@ namespace spd {
 
 enum LifetimeType {
     UseJSLifetime,
-    UseCXXLifetime
+    UseCXXLifetime,
+    UseSharedLifetime
 };
 
 }
