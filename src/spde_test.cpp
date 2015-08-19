@@ -23,9 +23,12 @@ class vx_test {
     public:
 
     vx_test(int t) : test(t) {
-        printf("VXX: vx_test constructing ... %d %lx\n", t, (unsigned long) this); }
+//        printf("VXX: vx_test constructing ... %d %lx\n", t, (unsigned long) this);
+    }
 
-    ~vx_test() { printf("VXX: vx_test descructing ... %d\n", this->test); }
+    ~vx_test() {
+//        printf("VXX: vx_test descructing ... %d\n", this->test);
+    }
 
     vx_test(const vx_test& o) {
         this->test_readonly = o.test_readonly;
@@ -60,7 +63,7 @@ class vx_test {
         return a; }
 
     int test_func_objptr(int a, vx_test *o) {
-        printf("VXX: test_func_objptr: %d ptr: %p\n", a, o);
+//        printf("VXX: test_func_objptr: %d ptr: %p\n", a, o);
         return o->test; }
 
     static int test_static_func(int a) {
@@ -452,7 +455,6 @@ int main(int argc, const char *argv[]) {
         JS::RootedValue ret_pre(*srt);
         JS_EvaluateScript(*srt, global, source_pre.c_str(), static_cast<unsigned  int>(source_pre
                                                         .length()), "node_module", 0, &ret_pre);
-
     }
 
     delete srt;

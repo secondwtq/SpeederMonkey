@@ -164,6 +164,7 @@ struct class_def {
 
         info->jsc_proto = proto.get();
         JS::RootedObject ctor(info->context, JS_GetConstructor(info->context, proto));
+        // TODO: it's the correct way? maybe not, it's just a magic.
         JS_SetReservedSlot(ctor, 1, OBJECT_TO_JSVAL(proto));
     }
 };
