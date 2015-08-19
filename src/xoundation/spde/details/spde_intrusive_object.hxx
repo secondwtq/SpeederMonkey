@@ -36,6 +36,11 @@ private:
 template <typename T>
 struct intrusive_object : public intrusive_object_base { };
 
+template <typename T>
+struct class_is_intrusive {
+    static constexpr const bool value = std::is_base_of<intrusive_object_base, T>::value;
+};
+
 namespace details {
 
 template <typename T>

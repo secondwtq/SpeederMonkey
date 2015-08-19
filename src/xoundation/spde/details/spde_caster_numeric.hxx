@@ -108,6 +108,21 @@ struct caster<long long> {
 };
 
 template<>
+struct caster<short> {
+
+    using actualT = short;
+    using backT = short;
+    using jsT = JS::Value;
+
+    inline static jsT tojs(JSContext *c, actualT src) {
+        return INT_TO_JSVAL(src); }
+
+    inline static backT back(JSContext *, JS::HandleValue src) {
+        return static_cast<short>(src.toInt32()); }
+
+};
+
+template<>
 struct caster<unsigned short> {
 
     using actualT = unsigned short;

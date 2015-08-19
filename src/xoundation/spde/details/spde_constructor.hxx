@@ -37,15 +37,16 @@ struct ctor_internal {
         return new (ptr) T(std::get<N>(args) ...); }
 };
 
-template <typename T, bool is_intrusive = std::is_base_of<intrusive_object_base, T>::value>
+template <typename T, bool is_intrusive = class_is_intrusive<T>::value>
 struct ctor_addon_intrusive {
-    inline static void callback(JSContext *c, T *src, JS::HandleObject obj) { } };
+    inline static void callback(JSContext *c, T *src, JS::HandleObject obj, lifetime<T> *lt) { } };
 
 template <typename T>
 struct ctor_addon_intrusive<T, true> {
-    inline static void callback(JSContext *c, T *src, JS::HandleObject obj) {
+    inline static void callback(JSContext *c, T *src, JS::HandleObject obj, lifetime<T> *lt) {
         get_instrusive_wrapper(src).init(c);
         get_instrusive_wrapper(src).get()->set(obj);
+        lt->is_intrusive = true;
     }
 };
 
@@ -120,7 +121,7 @@ struct ctor_callback {
         auto args_tuple = details::construct_args<typename caster<Args>::backT ...>(c, args);
         lifetime<T> *t = lifetime_creation<lt>()(args_tuple);
         JS_SetPrivate(self, reinterpret_cast<void *>(t));
-        ctor_addon_intrusive<T>::callback(c, t->get(), self);
+        ctor_addon_intrusive<T>::callback(c, t->get(), self, t);
     }
 
     template <LifetimeType lt>
@@ -150,6 +151,7 @@ template <typename T, LifetimeType lt, typename ... Args>
 struct class_def {
     inline void operator () (JS::HandleObject global, bool use_invalid = false, JS::HandleObject parent_proto = JS::NullPtr()) {
         class_info<T> *info = class_info<T>::instance();
+
         using callbacks = details::ctor_callback<T, Args ...>;
 
         info->jsc_def->finalize = callbacks::dtor_callback;
@@ -157,9 +159,12 @@ struct class_def {
         JSNative ctor_callback = callbacks::template callback<lt>;
         if (use_invalid) {
             ctor_callback = callbacks::callback_invalid; }
-        info->jsc_proto = JS_InitClass(info->context, global, parent_proto, info->jsc_def_proto,
-                                       ctor_callback, 0, details::default_properties,
-                                       details::default_funcs, nullptr, nullptr);
+        JS::RootedObject proto(info->context, JS_InitClass(info->context, global, parent_proto, info->jsc_def_proto,
+                ctor_callback, 0, details::default_properties, details::default_funcs, nullptr, nullptr));
+
+        info->jsc_proto = proto.get();
+        JS::RootedObject ctor(info->context, JS_GetConstructor(info->context, proto));
+        JS_SetReservedSlot(ctor, 1, OBJECT_TO_JSVAL(proto));
     }
 };
 

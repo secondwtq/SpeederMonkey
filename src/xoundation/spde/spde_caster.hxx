@@ -80,7 +80,7 @@ struct caster {
 
 };
 
-template <typename T, bool is_intrusive = std::is_base_of<intrusive_object_base, T>::value>
+template <typename T, bool is_intrusive = class_is_intrusive<T>::value>
 struct micro_caster_ptr;
 
 template <typename T>
@@ -107,10 +107,14 @@ struct micro_caster_ptr<T, true> {
             return JS::UndefinedValue(); }
 
         if (!details::get_instrusive_wrapper(src).inited()) {
-            JS::RootedValue ret(c, micro_caster_ptr<T, false>::tojs(c, reinterpret_cast<T *>(src)));
+            JS::RootedObject proto(c, class_info<T>::instance()->jsc_proto);
+            JSObject *jsobj = JS_NewObject(c, class_info<T>::instance()->jsc_def, proto, JS::NullPtr());
+            lifetime<T> *lt = new lifetime_cxx<T>(src);
+            JS_SetPrivate(jsobj, reinterpret_cast<void *>(lt));
+            lt->is_intrusive = true;
             details::get_instrusive_wrapper(src).init(c);
-            details::get_instrusive_wrapper(src).get()->set(ret.toObjectOrNull());
-            return ret;
+            details::get_instrusive_wrapper(src).get()->set(jsobj);
+            return OBJECT_TO_JSVAL(jsobj);
         } else { return JS::ObjectOrNullValue(*(details::get_instrusive_wrapper(src).get())); }
     }
 
