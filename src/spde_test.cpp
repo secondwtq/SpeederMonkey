@@ -328,8 +328,9 @@ public:
 
 class CopyTest {
 public:
-    CopyTest(CopyTestCopied arg) {
-        printf("CopyTest constructed. this: %p, CopyTestCopied: %p\n", this, &arg); }
+    CopyTest(CopyTestCopied &arg) {
+//        printf("CopyTest constructed. this: %p, CopyTestCopied: %p\n", this, &arg);
+    }
     CopyTest(const CopyTest&) {
         printf("CopyTest copied. %p\n", this); }
     CopyTest(CopyTest&&) {
@@ -339,7 +340,8 @@ public:
         printf("testCopy called. this: %p, CopyTestCopied: %p\n", this, &arg); }
 
     ~CopyTest() {
-        printf("CopyTest destructed. %p\n", this); }
+//        printf("CopyTest destructed. %p\n", this);
+    }
 };
 
 int main(int argc, const char *argv[]) {
@@ -416,8 +418,8 @@ int main(int argc, const char *argv[]) {
                 .enumerator(EnumTest::Reliable, "Reliable");
 
         spd::class_info<CopyTest>::inst_wrapper::set(new spd::class_info<CopyTest>(*srt, "CopyTest"));
-        klass<CopyTest>().define(global, spd::argpack<CopyTestCopied>())
-                .attach("attachNew", spd::argpack<CopyTestCopied>())
+        klass<CopyTest>().define(global, spd::argpack<CopyTestCopied&>())
+                .attach("attachNew", spd::argpack<CopyTestCopied&>())
                 .reproto("reproto")
                 .method<decltype(&CopyTest::testCopy), &CopyTest::testCopy>("testCopy");
 

@@ -24,7 +24,6 @@ namespace details {
 
 template<typename T, typename ... Args>
 struct ctor_internal {
-    using info_t = class_info<T>;
 
     // 150819: fixed duplicated copying in argument forwarding of ctor
     template<size_t ... N>
@@ -118,7 +117,7 @@ struct ctor_callback {
     using lifetime_creation = typename details::lifetime_enumtype<T, lt, Args ...>::type;
     template <LifetimeType lt>
     inline static void attach_new_native(JSContext *c, JS::HandleObject self, JS::CallArgs args) {
-        auto args_tuple = details::construct_args<typename caster<Args>::backT ...>(c, args);
+        auto args_tuple = details::construct_args<Args ...>(c, args);
         lifetime<T> *t = lifetime_creation<lt>()(args_tuple);
         JS_SetPrivate(self, reinterpret_cast<void *>(t));
         ctor_addon_intrusive<T>::callback(c, t->get(), self, t);

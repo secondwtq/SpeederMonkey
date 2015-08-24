@@ -91,7 +91,7 @@ class SpdRuntime {
     }
 
     // tsc.js failed with strict mode
-    SpdRuntime(size_t max_bytes = 32 * 1024L * 1024L, size_t stack_size = 4096,
+    SpdRuntime(size_t max_bytes = 48 * 1024L * 1024L, size_t stack_size = 4096,
                    bool jit = true, bool strict = false) {
         SpdInitialize::Init();
         m_runtime = JS_NewRuntime(max_bytes, JS_USE_HELPER_THREADS);

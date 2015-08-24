@@ -9,7 +9,7 @@ option(USE_STATIC "link with static mozjs binary (libjs_static.a)" OFF)
 # include_directories(SYSTEM ${SPIDERM_INCLUDE_DIRS})
 
 include_directories(SYSTEM ./src)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -g")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -g -O3")
 # 150616 CMake script revise
 #   * build in Linux
 #   * pagezerrro is OS X exclusive

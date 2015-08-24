@@ -134,7 +134,7 @@ class class_helper {
     // what pleases me is that, the 'error message'
     //  (crash stacktrace effectively) is clear enough
     //  (though the symbols is a little bit tooo looong)
-    template<typename PropT, PropT (T::*Getter)(), void (T::*Setter)(PropT)>
+    template<typename PropT, PropT (T::*Getter)() const, void (T::*Setter)(PropT)>
     inline SPD_PUBLICAPI class_helper<T> accessor(const std::string& name, bool readonly = false) {
         info_t *info = info_t::instance();
 
@@ -145,6 +145,21 @@ class class_helper {
             (details::property_accessor_general<T, PropT>::template getter<Getter>),
             reinterpret_cast<JSStrictPropertyOp>
             (details::property_accessor_general<T, PropT>::template setter<void, Setter>));
+
+        return *this;
+    }
+
+    template<typename PropT, PropT (T::*Getter)(), void (T::*Setter)(PropT)>
+    inline SPD_PUBLICAPI class_helper<T> accessor(const std::string& name, bool readonly = false) {
+        info_t *info = info_t::instance();
+
+        JS::RootedObject proto(info->context, info->jsc_proto);
+        JS_DefineProperty(info->context, proto, name.c_str(), JS::UndefinedHandleValue,
+                JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_SHARED | JSPROP_NATIVE_ACCESSORS,
+                reinterpret_cast<JSPropertyOp>
+                (details::property_accessor_general<T, PropT>::template getter<Getter>),
+                reinterpret_cast<JSStrictPropertyOp>
+                (details::property_accessor_general<T, PropT>::template setter<void, Setter>));
 
         return *this;
     }
@@ -251,7 +266,7 @@ private:
         template<typename U = ReturnT>
         inline static bool callback(JSContext *context, unsigned int argc, JS::Value *vp) {
             JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
-            auto args_tuple = details::construct_args<typename caster<Args>::backT ...>(context, args);
+            auto args_tuple = details::construct_args<Args ...>(context, args);
             T *raw = reinterpret_cast<spd::lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
             return details::method_callback_wrapper<ReturnT(T::*)(Args ...), func, std::is_void<ReturnT>::value>::callback
                     (raw, context, args, args_tuple, typename indices_builder<sizeof ... (Args)
@@ -274,7 +289,7 @@ private:
         template<typename U = ReturnT>
         inline static bool callback(JSContext *context, unsigned int argc, JS::Value *vp) {
             JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
-            auto args_tuple = details::construct_args<typename caster<Args>::backT ...>(context, args);
+            auto args_tuple = details::construct_args<Args ...>(context, args);
             const T *raw = reinterpret_cast<spd::lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
             return details::method_callback_wrapper<ReturnT(T::*)(Args ...) const, func, std::is_void<ReturnT>::value>::callback
                     (raw, context, args, args_tuple, typename indices_builder<sizeof ... (Args)>::type());

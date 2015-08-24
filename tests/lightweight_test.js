@@ -19,6 +19,61 @@ var t = vx_test;
 //	val_array[i] = obj_array[i].test;
 //}
 
+var __extends = this.__extends || function (d, b) {
+        for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+        function __() { this.constructor = d; }
+        __.prototype = b.prototype;
+        d.prototype = new __();
+    };
+
+var cpt = new CopyTestCopied();
+
+var CopyTestExtended = (function () {
+    function CopyTestExtended() { }
+    return CopyTestExtended;
+})();
+CopyTestExtended.prototype = CopyTest.prototype;
+CopyTestExtended.prototype.constructor = CopyTestExtended;
+
+var CopyTestExtendedEx = (function (_super) {
+    __extends(CopyTestExtendedEx, _super);
+    function CopyTestExtendedEx(cpt) {
+        _super.call(this, cpt); }
+    CopyTestExtendedEx.prototype.testExtend = function () {
+        print("this is test extend");
+    };
+    return CopyTestExtendedEx;
+})(CopyTestExtended);
+
+function createCopyTestExtended() {
+    var ret = CopyTest.reproto(this.prototype);
+    CopyTest.attachNew.call(ret, arguments[0]);
+    this.apply(ret, arguments);
+    return ret;
+}
+
+function createCopyTestExtended2(cpt) {
+    var ret = CopyTest.reproto(CopyTestExtended.prototype);
+    CopyTest.attachNew.call(ret, cpt);
+    CopyTestExtended.apply(ret, cpt);
+    return ret;
+}
+
+function createCopyTestExtended3(ext, cpt) {
+    var ret = CopyTest.reproto(ext.prototype);
+    CopyTest.attachNew.call(ret, cpt);
+    ext.apply(ret, cpt);
+    return ret;
+}
+
+var obj_array = { };
+for (var i = 0; i < 600000; i++) {
+    //obj_array[i] = createCopyTestExtended3(CopyTestExtended, cpt);
+    //obj_array[i] = createCopyTestExtended2(cpt);
+    obj_array[i] = new CopyTest(cpt);
+    //obj_array[i] = createCopyTestExtended.call(CopyTestExtendedEx, cpt);
+}
+
 // 0.77 - 0.80s
 // -O3 - 0.07 - 0.09s
 //var a = new t(10);
