@@ -9,6 +9,7 @@
 #include "../../thirdpt/js_engine.hxx"
 
 #include "../spde_common.hxx"
+#include "../spde_espwrap.hxx"
 #include "../spde_heroes.hxx"
 #include "../spde_vivalavida.hxx"
 #include "spde_intrusive_object.hxx"
@@ -43,8 +44,7 @@ struct ctor_addon_intrusive {
 template <typename T>
 struct ctor_addon_intrusive<T, true> {
     inline static void callback(JSContext *c, T *src, JS::HandleObject obj, lifetime<T> *lt) {
-        get_instrusive_wrapper(src).init(c);
-        get_instrusive_wrapper(src).get()->set(obj);
+        get_instrusive_wrapper(src).init_with_jsobj(c, obj);
         lt->is_intrusive = true;
     }
 };
@@ -136,7 +136,7 @@ struct ctor_callback {
     template <LifetimeType lt> // removed default parameter since it's to be used internally
     inline static bool callback(JSContext *c, unsigned int argc, JS::Value *vp) {
         JS::RootedObject proto(c, class_info<T>::instance()->jsc_proto);
-        JS::RootedObject jsobj(c, JS_NewObject(c, class_info<T>::instance()->jsc_def, proto, JS::NullPtr()));
+        JS::RootedObject jsobj(c, espwrap::NewObject(c, class_info<T>::instance()->jsc_def, proto));
 
         JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
         attach_new_native<lt>(c, jsobj, args);
@@ -164,7 +164,8 @@ struct class_def {
         info->jsc_proto = proto.get();
         JS::RootedObject ctor(info->context, JS_GetConstructor(info->context, proto));
         // TODO: it's the correct way? maybe not, it's just a magic.
-        JS_SetReservedSlot(ctor, 1, OBJECT_TO_JSVAL(proto));
+//        JS_SetPrivate(ctor, info->jsc_proto);
+//        JS_SetReservedSlot(ctor, 1, OBJECT_TO_JSVAL(proto));
     }
 };
 

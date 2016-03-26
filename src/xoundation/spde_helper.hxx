@@ -18,9 +18,9 @@ namespace xoundation {
 
 static JSClass cls_global = {
     "mozjs_context", JSCLASS_GLOBAL_FLAGS,
-    JS_PropertyStub, JS_DeletePropertyStub,
+    JS_PropertyStub, spd::espwrap::StubDelProp,
     JS_PropertyStub, JS_StrictPropertyStub,
-    JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub,
+    spd::espwrap::StubEnum, spd::espwrap::StubResolve, spd::espwrap::StubConv,
     nullptr, nullptr, nullptr, nullptr,
     JS_GlobalObjectTraceHook
 };
@@ -101,8 +101,13 @@ class SpdRuntime {
 
         JS_SetNativeStackQuota(m_runtime, 256 * sizeof(size_t) * 1024);
 
+#if defined(SPD_MOZJS38)
+        JS_SetErrorReporter(m_runtime, SpdRuntime::error_reporter);
+#else
         JS_SetErrorReporter(m_context, SpdRuntime::error_reporter);
+#endif
 
+//        JS::RuntimeOptionsRef(m_runtime).setVarObjFix(true);
         if (jit) {
             enable_jit(); }
         if (strict) {
@@ -117,7 +122,7 @@ class SpdRuntime {
     void enable_jit() {
         JS::RuntimeOptionsRef(m_runtime).setBaseline(true).setIon(true).setAsmJS(true);
 
-        JS_SetParallelIonCompilationEnabled(m_runtime, true);
+        spd::espwrap::SetParallelIonCompilationEnabled(m_runtime, true);
         JS_SetGlobalJitCompilerOption(m_runtime, JSJITCOMPILER_ION_ENABLE, 1);
         JS_SetGlobalJitCompilerOption(m_runtime, JSJITCOMPILER_BASELINE_ENABLE, 1);
         // JS::ContextOptionsRef(m_context).setExtraWarnings(1).setVarObjFix(1);
@@ -125,7 +130,12 @@ class SpdRuntime {
 
     // extra warnings and strict mode
     void use_strict() {
-        JS::ContextOptionsRef(m_context).setStrictMode(1); }
+#if defined(SPD_MOZJS38)
+        JS::RuntimeOptionsRef(m_runtime).setStrictMode(1);
+#else
+        JS::ContextOptionsRef(m_context).setStrictMode(1);
+#endif
+    }
 
     JSContext *context() { return m_context; }
     JSRuntime *runtime() { return m_runtime; }
@@ -166,8 +176,8 @@ class SpdRuntime {
         JS_SetGCCallback(runtime(), wrapper_gccb, &m_gccb);
     }
 
-    void set_error_reporter(void (*func)(JSContext *, const char *, JSErrorReport *)) {
-        JS_SetErrorReporter(context(), func); }
+//    void set_error_reporter(void (*func)(JSContext *, const char *, JSErrorReport *)) {
+//        JS_SetErrorReporter(context(), func); }
 
     private:
 

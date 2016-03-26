@@ -16,6 +16,8 @@ print(p.data.a);
 print(p.data.b);
 a.b = 2;
 print(p.data.b);
+print(p.func());
+print(p.external(3));
 
 call_data(p);
 

@@ -11,4 +11,6 @@
 #include "spde/spde_functionbind.hxx"
 #include "spde/spde_classhelper.hxx"
 
+#include "spde/spde_espwrap.hxx"
+
 #endif

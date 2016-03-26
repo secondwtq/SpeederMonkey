@@ -8,6 +8,8 @@
 
 #include "../../thirdpt/js_engine.hxx"
 
+#include "../spde_espwrap.hxx"
+
 #include <cassert>
 
 namespace xoundation {
@@ -86,6 +88,21 @@ struct caster<JS::HandleObject> {
 
 };
 
+template<>
+struct caster<JS::HandleValue> {
+
+    using actualT = JS::HandleValue;
+    using backT = JS::HandleValue;
+    using jsT = JS::Value;
+
+    inline static jsT tojs(JSContext *c, actualT src) {
+        return src; }
+
+    inline static backT back(JSContext *c, JS::HandleValue src) {
+        return src; }
+
+};
+
 }
 }
 
@@ -113,7 +130,7 @@ struct caster<std::shared_ptr<T>> {
             return JS::UndefinedValue(); }
 
         JS::RootedObject proto(c, class_info<T>::instance()->jsc_proto);
-        JSObject *jsobj = JS_NewObject(c, class_info<T>::instance()->jsc_def, proto, JS::NullPtr());
+        JSObject *jsobj = espwrap::NewObject(c, class_info<T>::instance()->jsc_def, proto);
         lifetime<T> *lt = new lifetime_shared_std<T>(src);
         JS_SetPrivate(jsobj, reinterpret_cast<void *>(lt));
         return OBJECT_TO_JSVAL(jsobj);

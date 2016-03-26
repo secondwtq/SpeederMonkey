@@ -17,6 +17,29 @@
 // again, FUCK V8.
 //
 
-#include <jsapi.h>
+#define SPD_ENGINE_VERMAJOR 31
+//#define SPD_ENGINE_VERMAJOR 38
+
+#if defined(SPD_ENGINE_VERMAJOR)
+#if SPD_ENGINE_VERMAJOR == 31
+#define SPD_MOZJS31 1
+#elif SPD_ENGINE_VERMAJOR == 38
+#define SPD_MOZJS38 1
+#else
+
+#endif
+#else
+
+#endif
+
+// #include <jsapi.h>
+#if defined(SPD_MOZJS31)
+#include <mozjs-31/jsapi.h>
+#endif
+
+#if defined(SPD_MOZJS38)
+#include <mozjs-38/jsapi.h>
+#include <mozjs-38/js/Conversions.h>
+#endif
 
 #endif // MOZJS_JS_ENGINE_HXX

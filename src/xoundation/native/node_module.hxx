@@ -6,7 +6,7 @@
 #ifndef MOZJS_NODE_MODULE_H
 #define MOZJS_NODE_MODULE_H
 
-#include <jsapi.h>
+#include "xoundation/thirdpt/js_engine.hxx"
 #include <xoundation/spde.hxx>
 #include <xoundation/spde/spde_test_common.hxx>
 
@@ -16,9 +16,9 @@ namespace native {
 
 static JSClass sandbox_class = {
     "sandbox", JSCLASS_GLOBAL_FLAGS,
-    JS_PropertyStub, JS_DeletePropertyStub,
+    JS_PropertyStub, spd::espwrap::StubDelProp,
     JS_PropertyStub, JS_StrictPropertyStub,
-    JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub,
+    spd::espwrap::StubEnum, spd::espwrap::StubResolve, spd::espwrap::StubConv,
     nullptr, nullptr, nullptr, nullptr,
     JS_GlobalObjectTraceHook
 };
@@ -55,7 +55,7 @@ bool eval(JSContext *c, unsigned int argc, JS::Value *vp) {
 
     JS::RootedObject current_global(c, JS::CurrentGlobalOrNull(c));
     JS::RootedValue ret(c);
-    bool ok = JS_EvaluateScript(c, current_global, source.c_str(), static_cast<unsigned int>(source
+    bool ok = spd::espwrap::EvaluateScriptDirect(c, current_global, source.c_str(), static_cast<unsigned int>(source
                                     .length()), name.c_str(), 0, &ret);
 
     args.rval().set(ret);
@@ -73,7 +73,7 @@ bool eval_in_sandbox(JSContext *c, unsigned int argc, JS::Value *vp) {
 
     {
         JSAutoCompartment ac(c, new_global); (void) ac; // needed for contexts work properly!
-        ok = JS_EvaluateScript(c, new_global, source.c_str(), static_cast<unsigned int>(source
+        ok = spd::espwrap::EvaluateScriptDirect(c, new_global, source.c_str(), static_cast<unsigned int>(source
                                         .length()), name.c_str(), 0, &ret);
     }
 
@@ -82,7 +82,7 @@ bool eval_in_sandbox(JSContext *c, unsigned int argc, JS::Value *vp) {
 }
 
 void register_interface_modules(JSContext *context, JS::Handle<JSObject *> parent) {
-    JS::RootedObject native_module(context, JS_DefineObject(context, parent, "_native_module",
+    JS::RootedObject native_module(context, spd::espwrap::JSDefineObject(context, parent, "_native_module",
                                                             nullptr, nullptr, JSPROP_PERMANENT | JSPROP_READONLY | JSPROP_ENUMERATE));
 
     JS_DefineFunction(context, native_module, "eval", eval, 2, attrs_func_default);

@@ -10,7 +10,7 @@
 #ifndef MOZJS_NODE_BUFFER_HXX
 #define MOZJS_NODE_BUFFER_HXX
 
-#include <jsapi.h>
+#include "xoundation/thirdpt/js_engine.hxx"
 #include <xoundation/spde.hpp>
 #include <xoundation/spde_helper.hxx>
 #include <utility>

@@ -43,7 +43,7 @@ struct caster<std::string> {
         return STRING_TO_JSVAL(JS_NewStringCopyZ(c, src.c_str())); }
 
     inline static backT back(JSContext *c, JS::HandleValue src) {
-        return JS_EncodeString(c, JSVAL_TO_STRING(src)); }
+        return JS_EncodeString(c, src.toString()); }
 
 };
 
@@ -58,7 +58,7 @@ struct caster<std::string&> {
         return STRING_TO_JSVAL(JS_NewStringCopyZ(c, src.c_str())); }
 
     inline static backT back(JSContext *c, JS::HandleValue src) {
-        return JS_EncodeString(c, JSVAL_TO_STRING(src)); }
+        return JS_EncodeString(c, src.toString()); }
 
 };
 
@@ -73,7 +73,7 @@ struct caster<const std::string&> {
         return STRING_TO_JSVAL(JS_NewStringCopyZ(c, src.c_str())); }
 
     inline static backT back(JSContext *c, JS::HandleValue src) {
-        const char *t = JS_EncodeString(c, JSVAL_TO_STRING(src));
+        const char *t = JS_EncodeString(c, src.toString());
         std::string ret(t);
         JS_free(c, const_cast<char *>(t));
         return ret;

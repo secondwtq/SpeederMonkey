@@ -8,6 +8,7 @@
 
 #include "../thirdpt/js_engine.hxx"
 
+#include "spde_espwrap.hxx"
 #include "details/spde_persistent_wrap.hxx"
 
 #include <string>
@@ -25,7 +26,7 @@ public:
         assert(!internal().inited());
         this->context = c;
         JS::RootedObject enumobj(c);
-        enumobj = JS_DefineObject(c, global, name.c_str(), nullptr, nullptr,
+        enumobj = espwrap::JSDefineObject(c, global, name.c_str(), nullptr, nullptr,
                                   JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_READONLY);
         internal().init_with_jsobj(c, enumobj);
         return *this;

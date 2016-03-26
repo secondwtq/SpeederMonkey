@@ -31,7 +31,7 @@
 #endif
 
 
-#include <jsapi.h>
+#include "xoundation/thirdpt/js_engine.hxx"
 #include <xoundation/spde.hxx>
 #include <xoundation/spde/spde_test_common.hxx>
 
@@ -213,7 +213,7 @@ void fs_unlink_sync(const std::string& path) {
 
 void register_interface_fs(JSContext *context, JS::HandleObject parent) {
 
-    JS::RootedObject node_fs(context, JS_DefineObject(context, parent, "_node_native_fs", nullptr, nullptr,
+    JS::RootedObject node_fs(context, spd::espwrap::JSDefineObject(context, parent, "_node_native_fs", nullptr, nullptr,
                                                       JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_READONLY));
 
     spd::class_info<stats>::inst_wrapper::set(new spd::class_info<stats>(context, "Stats"));
@@ -244,7 +244,7 @@ void register_interface_fs(JSContext *context, JS::HandleObject parent) {
 }
 
 void register_interface_os(JSContext *context, JS::Handle<JSObject *> parent) {
-    JS::RootedObject node_os(context, JS_DefineObject(context, parent, "_node_native_os", nullptr,
+    JS::RootedObject node_os(context, spd::espwrap::JSDefineObject(context, parent, "_node_native_os", nullptr,
                                                       nullptr, JSPROP_PERMANENT |
                                                                JSPROP_ENUMERATE | JSPROP_READONLY));
 
@@ -327,7 +327,7 @@ void register_interface_process_args(JSContext *context, JS::HandleObject proces
 
 void register_interface_process(JSContext *context, JS::HandleObject parent, int argc, const char
                                 * argv[]) {
-    JS::RootedObject node_process(context, JS_DefineObject(context, parent, "process", nullptr, nullptr,
+    JS::RootedObject node_process(context, spd::espwrap::JSDefineObject(context, parent, "process", nullptr, nullptr,
                                                            JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_READONLY));
 
     JS_DefineFunction(context, node_process, "cwd", spd::function_callback_wrapper<std::string (),

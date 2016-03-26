@@ -9,6 +9,7 @@
 #include "../thirdpt/js_engine.hxx"
 
 #include "spde_heroes.hxx"
+#include "spde_espwrap.hxx"
 #include "spde_classinfo.hxx"
 #include "spde_vivalavida.hxx"
 #include "details/spde_intrusive_object.hxx"
@@ -27,15 +28,17 @@ struct micro_caster;
 template <typename T>
 struct micro_caster<T, false> {
 
+    using backT = const T&;
+
     inline static JS::Value tojs(JSContext *c, const T& src) {
         JS::RootedObject proto(c, class_info<T>::instance()->jsc_proto);
-        JSObject *jsobj = JS_NewObject(c, class_info<T>::instance()->jsc_def, proto, JS::NullPtr());
+        JSObject *jsobj = espwrap::NewObject(c, class_info<T>::instance()->jsc_def, proto);
         lifetime<T> *lt = new lifetime_js<T>(src);
         JS_SetPrivate(jsobj, reinterpret_cast<void *>(lt));
         return OBJECT_TO_JSVAL(jsobj);
     }
 
-    inline static const T& back(JSContext *c, JS::HandleValue src) {
+    inline static backT back(JSContext *c, JS::HandleValue src) {
         lifetime<T> *t = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(src.toObjectOrNull()));
         return *(t->get());
     }
@@ -45,13 +48,15 @@ struct micro_caster<T, false> {
 template <typename T>
 struct micro_caster<T, true> {
 
+    using backT = T;
+
     inline static JS::Value tojs(JSContext *c, T src) {
         JS::RootedValue ret(c);
         ret.setInt32(static_cast<int>(src));
         return ret;
     }
 
-    inline static T back(JSContext *c, JS::HandleValue src) {
+    inline static backT back(JSContext *c, JS::HandleValue src) {
         return static_cast<T>(src.toInt32()); }
 
 };
@@ -59,7 +64,7 @@ struct micro_caster<T, true> {
 template<typename T>
 struct caster {
     using actualT = const T&;
-    using backT = const T&;
+    using backT = typename micro_caster<T>::backT;
     using jsT = JS::Value;
 
     // used when a C++ function returns T is called from JS
@@ -69,13 +74,12 @@ struct caster {
     //  ctor of T called from JS uses a different mechanism, since
     //  it has a JS lifetime by default, see details/spde_constructor.hxx.
     inline static jsT tojs(JSContext *c, actualT src) {
-        return micro_caster<T>().tojs(c, src);
-    }
+        return micro_caster<T>().tojs(c, src); }
 
     // used when a C++ function called from JS
     //  reads arguments passed from JS
-    inline static auto back(JSContext *c, JS::HandleValue src)
-            -> decltype(micro_caster<T>().back(c, src)) {
+    inline static typename micro_caster<T>::backT back(
+            JSContext *c, JS::HandleValue src) {
         return micro_caster<T>().back(c, src); }
 
 };
@@ -91,7 +95,7 @@ struct micro_caster_ptr<T, false> {
             return JS::UndefinedValue(); }
 
         JS::RootedObject proto(c, class_info<T>::instance()->jsc_proto);
-        JSObject *jsobj = JS_NewObject(c, class_info<T>::instance()->jsc_def, proto, JS::NullPtr());
+        JSObject *jsobj = espwrap::NewObject(c, class_info<T>::instance()->jsc_def, proto);
         lifetime<T> *lt = new lifetime_cxx<T>(src);
         JS_SetPrivate(jsobj, reinterpret_cast<void *>(lt));
         return OBJECT_TO_JSVAL(jsobj);
@@ -108,12 +112,11 @@ struct micro_caster_ptr<T, true> {
 
         if (!details::get_instrusive_wrapper(src).inited()) {
             JS::RootedObject proto(c, class_info<T>::instance()->jsc_proto);
-            JSObject *jsobj = JS_NewObject(c, class_info<T>::instance()->jsc_def, proto, JS::NullPtr());
+            JSObject *jsobj = espwrap::NewObject(c, class_info<T>::instance()->jsc_def, proto);
             lifetime<T> *lt = new lifetime_cxx<T>(src);
             JS_SetPrivate(jsobj, reinterpret_cast<void *>(lt));
             lt->is_intrusive = true;
-            details::get_instrusive_wrapper(src).init(c);
-            details::get_instrusive_wrapper(src).get()->set(jsobj);
+            details::get_instrusive_wrapper(src).init_with_jsptr(c, jsobj);
             return OBJECT_TO_JSVAL(jsobj);
         } else { return JS::ObjectOrNullValue(*(details::get_instrusive_wrapper(src).get())); }
     }
@@ -131,7 +134,7 @@ struct caster<T *> {
         return micro_caster_ptr<T>().tojs(c, src); }
 
     inline static backT back(JSContext *c, JS::HandleValue src) {
-        if (src.isUndefined()) {
+        if (src.isNullOrUndefined()) {
             return nullptr; }
         lifetime<T> *t = reinterpret_cast<lifetime<T> *>(JS_GetPrivate(src.toObjectOrNull()));
         return t->get();

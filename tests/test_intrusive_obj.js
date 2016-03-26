@@ -39,7 +39,7 @@ var intr = new TestIntrusiveObject();
 var non_intr = new TestIntrusiveObjectForControl();
 print('Set them to undefined and GC.');
 intr = undefined;
-non_intr = undefined;
+non_intr = new vx_test();
 collectgarbage();
 
 print();

@@ -50,6 +50,12 @@ struct persistent_rooted_wrap {
         return *this;
     }
 
+    persistent_rooted_wrap<T>& init_with_jsptr(JSContext *c, T obj) {
+        assert(m_impl == nullptr);
+        m_impl = new internalT(c, obj);
+        return *this;
+    }
+
     persistent_rooted_wrap<T>& init_with_jsobj(JSContext *c, JS::Handle<T> obj) {
         assert(m_impl == nullptr);
         m_impl = new internalT(c, obj);

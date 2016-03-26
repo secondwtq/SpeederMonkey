@@ -4,7 +4,7 @@
 //
 
 #include <memory>
-#include <jsapi.h>
+// #include <jsapi.h>
 
 #include "xoundation/spde.hxx"
 
@@ -23,11 +23,11 @@ class vx_test {
     public:
 
     vx_test(int t) : test(t) {
-//        printf("VXX: vx_test constructing ... %d %lx\n", t, (unsigned long) this);
+        // printf("VXX: vx_test constructing ... %d %lx\n", t, (unsigned long) this);
     }
 
     ~vx_test() {
-//        printf("VXX: vx_test descructing ... %d\n", this->test);
+        // printf("VXX: vx_test descructing ... %d\n", this->test);
     }
 
     vx_test(const vx_test& o) {
@@ -64,6 +64,7 @@ class vx_test {
 
     int test_func_objptr(int a, vx_test *o) {
 //        printf("VXX: test_func_objptr: %d ptr: %p\n", a, o);
+        if (!o) { return 0; }
         return o->test; }
 
     static int test_static_func(int a) {
@@ -120,6 +121,10 @@ class parent {
 
     static int getst() { return st; }
 };
+
+void externalFunc(parent *self, int i) {
+    printf("externalFunc called, self.a %d, i %d\n", self->a, i);
+}
 
 class child : public parent {
     public:
@@ -192,6 +197,8 @@ public:
 
 };
 
+// TODO: mozjs 38 removed Lookup API, need further reserach
+//  for it and validate the Get APIs.
 bool proxy_resolve(JSContext *context, JS::HandleObject obj,
                    JS::HandleId id, JS::MutableHandleObject objp) {
     std::string name = spd::tostring_jsid(context, id);
@@ -202,11 +209,11 @@ bool proxy_resolve(JSContext *context, JS::HandleObject obj,
         JS::RootedValue val(context);
         if (!JS_GetPrototype(context, obj, &proto)) {
             return true; }
-        if (!JS_LookupPropertyById(context, proto, id, &val) || val.isUndefined()) {
+        if (!JS_GetPropertyById(context, proto, id, &val) || val.isUndefined()) {
             JSObject *objdatap = self->data.get().toObjectOrNull();
             if (objdatap) {
                 JS::RootedObject objdata(context, objdatap);
-                if (!JS_LookupPropertyById(context, objdata, id, &val) || val.isUndefined()) {
+                if (!JS_GetPropertyById(context, objdata, id, &val) || val.isUndefined()) {
                     printf("Lookup failed, adding %s\n", name.c_str());
                     JS::RootedValue v(context, JSVAL_TRUE);
                     JS_SetProperty(context, objdata, name.c_str(), v);
@@ -267,10 +274,10 @@ bool proxy_get_property(JSContext *context, JS::HandleObject obj,
 
 static JSClass proxyClassDef = {
         "proxyClassValueWrap",
-        JSCLASS_HAS_PRIVATE | JSCLASS_NEW_RESOLVE,
-        proxy_add_property, JS_DeletePropertyStub,
+        JSCLASS_HAS_PRIVATE | spd::espwrap::CLASS_NEW_RESOLVE,
+        proxy_add_property, spd::espwrap::StubDelProp,
         JS_PropertyStub, JS_StrictPropertyStub,
-        JS_EnumerateStub, (JSResolveOp) proxy_resolve, JS_ConvertStub,
+        spd::espwrap::StubEnum, (JSResolveOp) proxy_resolve, spd::espwrap::StubConv,
         nullptr, nullptr, nullptr, nullptr, nullptr,
 };
 
@@ -376,6 +383,7 @@ int main(int argc, const char *argv[]) {
                     .method<decltype(&parent::func_nonv), &parent::func_nonv>("func_nonv")
                     .method<decltype(&parent::func_parent), &parent::func_parent>("func_parent")
                     .method<decltype(&parent::itsthis), &parent::itsthis>("itsthis")
+                    .ext_method<decltype(externalFunc), externalFunc>("external")
                     .static_prop<int, &parent::st>("st")
                     .static_func<decltype(parent::getst), parent::getst>("getst");
 
@@ -455,7 +463,7 @@ int main(int argc, const char *argv[]) {
         printf("loading ...\n");
         std::string source_pre = readfile("./lib/node_module.js");
         JS::RootedValue ret_pre(*srt);
-        JS_EvaluateScript(*srt, global, source_pre.c_str(), static_cast<unsigned  int>(source_pre
+        spd::espwrap::EvaluateScriptDirect(*srt, global, source_pre.c_str(), static_cast<unsigned  int>(source_pre
                                                         .length()), "node_module", 0, &ret_pre);
     }
 

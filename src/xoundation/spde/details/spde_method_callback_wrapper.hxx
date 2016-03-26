@@ -63,8 +63,52 @@ struct method_callback_wrapper<void (T::*)(Args ...) const, func, true> {
     }
 };
 
-}
+template<typename ProtoT, ProtoT func, bool is_void>
+struct raw_method_callback_wrapper;
 
+template<typename T, typename ... Args, void func(T *, Args ...)>
+struct raw_method_callback_wrapper<void (T *, Args ...), func, true> {
+    template<size_t ... N>
+    inline static bool callback(T *self, JSContext *context, const JS::CallArgs& call_args,
+            std::tuple<typename caster<Args>::backT ...> args, indices<N ...>) {
+        func(self, std::get<N>(args) ...);
+        call_args.rval().setUndefined();
+        return true;
+    }
+};
+
+template<typename T, typename ... Args, void func(const T *, Args ...)>
+struct raw_method_callback_wrapper<void (const T *, Args ...), func, true> {
+    template<size_t ... N>
+    inline static bool callback(const T *self, JSContext *context, const JS::CallArgs& call_args,
+            std::tuple<typename caster<Args>::backT ...> args, indices<N ...>) {
+        func(self, std::get<N>(args) ...);
+        call_args.rval().setUndefined();
+        return true;
+    }
+};
+
+template<typename T, typename ReturnT, typename ... Args, ReturnT func(const T *, Args ...)>
+struct raw_method_callback_wrapper<ReturnT (const T *, Args ...), func, false> {
+    template<size_t ... N>
+    inline static bool callback(const T *self, JSContext *context, const JS::CallArgs& call_args,
+            std::tuple<typename caster<Args>::backT ...> args, indices<N ...>) {
+        call_args.rval().set(caster<ReturnT>::tojs(context, func(self, std::get<N>(args) ...)));
+        return true;
+    }
+};
+
+template<typename T, typename ReturnT, typename ... Args, ReturnT func(T *, Args ...)>
+struct raw_method_callback_wrapper<ReturnT (T *, Args ...), func, false> {
+    template<size_t ... N>
+    inline static bool callback(T *self, JSContext *context, const JS::CallArgs& call_args,
+            std::tuple<typename caster<Args>::backT ...> args, indices<N ...>) {
+        call_args.rval().set(caster<ReturnT>::tojs(context, func(self, std::get<N>(args) ...)));
+        return true;
+    }
+};
+
+}
 }
 }
 

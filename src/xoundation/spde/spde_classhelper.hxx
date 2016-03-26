@@ -93,9 +93,9 @@ class class_helper {
         JS::RootedObject proto(info->context, info->jsc_proto);
         JS_DefineProperty(info->context, proto, name.c_str(), JS::UndefinedHandleValue,
                           JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_SHARED |
-                          JSPROP_NATIVE_ACCESSORS, reinterpret_cast<JSPropertyOp>
+                          espwrap::PROP_NATIVE_ACCESSOR, reinterpret_cast<espwrap::TypeNativeGetter>
                           (&(details::property_accessor<T, PropT>::template default_getter<AttrT>)),
-                          reinterpret_cast<JSStrictPropertyOp>
+                          reinterpret_cast<espwrap::TypeNativeSetter>
                           (&(details::property_accessor<T, PropT>::template default_setter<AttrT>)));
         return *this;
     }
@@ -107,7 +107,7 @@ class class_helper {
 
         JS::RootedObject proto(info->context, info->jsc_proto);
         JS_DefineProperty(info->context, proto, name.c_str(), JS::UndefinedHandleValue,
-                JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_SHARED | JSPROP_NATIVE_ACCESSORS | JSPROP_READONLY,
+                JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_SHARED | espwrap::PROP_NATIVE_ACCESSOR | JSPROP_READONLY,
                 reinterpret_cast<JSPropertyOp>
                 (details::property_accessor_general<T, PropT>::template getter<Getter>), nullptr);
 
@@ -120,7 +120,7 @@ class class_helper {
 
         JS::RootedObject proto(info->context, info->jsc_proto);
         JS_DefineProperty(info->context, proto, name.c_str(), JS::UndefinedHandleValue,
-                JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_SHARED | JSPROP_NATIVE_ACCESSORS | JSPROP_READONLY,
+                JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_SHARED | espwrap::PROP_NATIVE_ACCESSOR | JSPROP_READONLY,
                 reinterpret_cast<JSPropertyOp>
                 (details::property_accessor_general<T, PropT>::template getter<Getter>), nullptr);
 
@@ -140,10 +140,10 @@ class class_helper {
 
         JS::RootedObject proto(info->context, info->jsc_proto);
         JS_DefineProperty(info->context, proto, name.c_str(), JS::UndefinedHandleValue,
-            JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_SHARED | JSPROP_NATIVE_ACCESSORS,
-            reinterpret_cast<JSPropertyOp>
+            JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_SHARED | espwrap::PROP_NATIVE_ACCESSOR,
+            reinterpret_cast<espwrap::TypeNativeGetter>
             (details::property_accessor_general<T, PropT>::template getter<Getter>),
-            reinterpret_cast<JSStrictPropertyOp>
+            reinterpret_cast<espwrap::TypeNativeSetter>
             (details::property_accessor_general<T, PropT>::template setter<void, Setter>));
 
         return *this;
@@ -155,10 +155,10 @@ class class_helper {
 
         JS::RootedObject proto(info->context, info->jsc_proto);
         JS_DefineProperty(info->context, proto, name.c_str(), JS::UndefinedHandleValue,
-                JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_SHARED | JSPROP_NATIVE_ACCESSORS,
-                reinterpret_cast<JSPropertyOp>
+                JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_SHARED | espwrap::PROP_NATIVE_ACCESSOR,
+                reinterpret_cast<espwrap::TypeNativeGetter>
                 (details::property_accessor_general<T, PropT>::template getter<Getter>),
-                reinterpret_cast<JSStrictPropertyOp>
+                reinterpret_cast<espwrap::TypeNativeSetter>
                 (details::property_accessor_general<T, PropT>::template setter<void, Setter>));
 
         return *this;
@@ -171,10 +171,10 @@ class class_helper {
 
         JS::RootedObject proto(info->context, info->jsc_proto);
         JS_DefineProperty(info->context, proto, name.c_str(), JS::UndefinedHandleValue,
-                JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_SHARED | JSPROP_NATIVE_ACCESSORS,
-                reinterpret_cast<JSPropertyOp>
+                JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_SHARED | espwrap::PROP_NATIVE_ACCESSOR,
+                reinterpret_cast<espwrap::TypeNativeGetter>
                 (details::property_accessor_general<T, PropT>::template getter<Getter>),
-                reinterpret_cast<JSStrictPropertyOp>
+                reinterpret_cast<espwrap::TypeNativeSetter>
                 (details::property_accessor_general<T, PropT>::template setter<Setter>));
 
         return *this;
@@ -186,10 +186,10 @@ class class_helper {
 
         JS::RootedObject proto(info->context, info->jsc_proto);
         JS_DefineProperty(info->context, proto, name.c_str(), JS::UndefinedHandleValue,
-                JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_SHARED | JSPROP_NATIVE_ACCESSORS,
-                reinterpret_cast<JSPropertyOp>
+                JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_SHARED | espwrap::PROP_NATIVE_ACCESSOR,
+                reinterpret_cast<espwrap::TypeNativeGetter>
                 (details::property_accessor_general<T, PropT>::template getter<Getter>),
-                reinterpret_cast<JSStrictPropertyOp>
+                reinterpret_cast<espwrap::TypeNativeSetter>
                 (details::property_accessor_general<T, PropT>::template setter<T&, Setter>));
 
         return *this;
@@ -201,6 +201,12 @@ class class_helper {
         return *this;
     }
 
+    template<typename ProtoT, ProtoT func>
+    inline SPD_PUBLICAPI class_helper<T> ext_method(const std::string& name) {
+        ext_method_callback_wrapper<ProtoT, func>::register_as(name);
+        return *this;
+    }
+
     // static members support, 150529 EVE
     template<typename PropT, PropT *AttrT>
     inline SPD_PUBLICAPI class_helper<T> static_prop(const std::string& name) {
@@ -208,10 +214,10 @@ class class_helper {
         JS::RootedObject proto(info->context, info->jsc_proto);
         JS::RootedObject ctor(info->context, JS_GetConstructor(info->context, proto));
         JS_DefineProperty(info->context, ctor, name.c_str(), JS::UndefinedHandleValue,
-                          JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_SHARED | JSPROP_NATIVE_ACCESSORS,
-                          reinterpret_cast<JSPropertyOp>
+                          JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_SHARED | espwrap::PROP_NATIVE_ACCESSOR,
+                          reinterpret_cast<espwrap::TypeNativeGetter>
                           (details::static_accessor<T, PropT>::template default_getter<AttrT>),
-                          reinterpret_cast<JSStrictPropertyOp>
+                          reinterpret_cast<espwrap::TypeNativeSetter>
                           (details::static_accessor<T, PropT>::template default_setter<AttrT>));
 
         return *this;
@@ -249,6 +255,55 @@ class class_helper {
     }
 
 private:
+
+    template<typename ProtoT, ProtoT func>
+    struct ext_method_callback_wrapper;
+
+    template<typename ReturnT, typename ... Args, ReturnT (func)(T *, Args ...)>
+    struct ext_method_callback_wrapper<ReturnT (T *, Args ...), func> {
+
+        template<typename U = ReturnT>
+        inline static bool callback(JSContext *context, unsigned int argc, JS::Value *vp) {
+            JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+            auto args_tuple = details::construct_args<Args ...>(context, args);
+            T *raw = reinterpret_cast<spd::lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
+            return details::raw_method_callback_wrapper<ReturnT(T *, Args ...),
+                    func, std::is_void<ReturnT>::value>::callback
+                    (raw, context, args, args_tuple, typename indices_builder<sizeof ... (Args)>::type());
+        }
+
+        inline static void register_as(const std::string& name) {
+            info_t *info = info_t::instance();
+            JS::RootedObject proto(info->context, info->jsc_proto);
+            JS_DefineFunction(info->context, proto, name.c_str(),
+                    ext_method_callback_wrapper<ReturnT (T *, Args ...), func>::callback, static_cast<unsigned
+                    int>(sizeof ... (Args)), JSPROP_PERMANENT | JSPROP_ENUMERATE | JSFUN_STUB_GSOPS);
+        }
+
+    };
+
+    template<typename ReturnT, typename ... Args, ReturnT (func)(const T *, Args ...)>
+    struct ext_method_callback_wrapper<ReturnT (const T *, Args ...), func> {
+
+        template<typename U = ReturnT>
+        inline static bool callback(JSContext *context, unsigned int argc, JS::Value *vp) {
+            JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+            auto args_tuple = details::construct_args<Args ...>(context, args);
+            T *raw = reinterpret_cast<spd::lifetime<T> *>(JS_GetPrivate(JS_THIS_OBJECT(context, vp)))->get();
+            return details::raw_method_callback_wrapper<ReturnT(const T *, Args ...),
+                    func, std::is_void<ReturnT>::value>::callback
+                    (raw, context, args, args_tuple, typename indices_builder<sizeof ... (Args)>::type());
+        }
+
+        inline static void register_as(const std::string& name) {
+            info_t *info = info_t::instance();
+            JS::RootedObject proto(info->context, info->jsc_proto);
+            JS_DefineFunction(info->context, proto, name.c_str(),
+                    ext_method_callback_wrapper<ReturnT (const T *, Args ...), func>::callback, static_cast<unsigned
+                    int>(sizeof ... (Args)), JSPROP_PERMANENT | JSPROP_ENUMERATE | JSFUN_STUB_GSOPS);
+        }
+
+    };
 
     template <bool (T::*func)(JSContext *, JS::CallArgs)>
     inline static bool raw_method_callback(JSContext *context, unsigned int argc, JS::Value *vp) {

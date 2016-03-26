@@ -3,6 +3,8 @@
 
 #include "../thirdpt/js_engine.hxx"
 
+#include "spde_espwrap.hxx"
+
 #include <assert.h>
 
 namespace xoundation {
@@ -16,9 +18,9 @@ static JSFunctionSpec default_funcs[] = { JS_FS_END };
 static JSClass default_class_def = {
         "$speeder_default_class",
         JSCLASS_HAS_PRIVATE,
-        JS_PropertyStub, JS_DeletePropertyStub,
+        JS_PropertyStub, spd::espwrap::StubDelProp,
         JS_PropertyStub, JS_StrictPropertyStub,
-        JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub,
+        spd::espwrap::StubEnum, spd::espwrap::StubResolve, spd::espwrap::StubConv,
         nullptr, nullptr, nullptr, nullptr, nullptr,
 };
 

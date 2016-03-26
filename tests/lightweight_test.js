@@ -66,13 +66,13 @@ function createCopyTestExtended3(ext, cpt) {
     return ret;
 }
 
-var obj_array = { };
-for (var i = 0; i < 600000; i++) {
-    //obj_array[i] = createCopyTestExtended3(CopyTestExtended, cpt);
-    //obj_array[i] = createCopyTestExtended2(cpt);
-    obj_array[i] = new CopyTest(cpt);
-    //obj_array[i] = createCopyTestExtended.call(CopyTestExtendedEx, cpt);
-}
+//var obj_array = { };
+//for (var i = 0; i < 600000; i++) {
+//    //obj_array[i] = createCopyTestExtended3(CopyTestExtended, cpt);
+//    //obj_array[i] = createCopyTestExtended2(cpt);
+//    obj_array[i] = new CopyTest(cpt);
+//    //obj_array[i] = createCopyTestExtended.call(CopyTestExtendedEx, cpt);
+//}
 
 // 0.77 - 0.80s
 // -O3 - 0.07 - 0.09s
@@ -94,7 +94,7 @@ for (var i = 0; i < 600000; i++) {
 // intrusive - 0.45 - 0.47s
 //
 // -O3 - 0.33 - 0.35s,
-//	and it seems GC and memory allocations takes the grater
+//	and it seems GC and memory allocations takes the greater
 //
 // var obj_array = { };
 // var val_array = null;

@@ -9,7 +9,7 @@
 #include <iostream>
 #include <string>
 
-#include <jsapi.h>
+#include "xoundation/thirdpt/js_engine.hxx"
 #include <xoundation/spde/spde_test_common.h>
 #include <xoundation/spde.hpp>
 
